@@ -1,0 +1,189 @@
+pragma language_version 0.23;
+
+import CompactStandardLibrary;
+
+// ─── Umbra ZK Escrow State Machine ──────────────────────────────────────────
+
+export enum EscrowState {
+    STATE_CREATED,
+    STATE_FUNDED,
+    STATE_DELIVERED,
+    STATE_RELEASED,
+    STATE_DISPUTED,
+    STATE_RESOLVED,
+    STATE_CANCELLED
+}
+
+// ─── On-Chain Public Ledger Commitments & Storage ───────────────────────────
+
+export ledger buyerCommitment: Bytes<32>;
+export ledger sellerCommitment: Bytes<32>;
+export ledger amountCommitment: Bytes<32>;
+export ledger conditionCommitment: Bytes<32>;
+export ledger escrowState: EscrowState;
+export ledger depositCount: Counter;
+export ledger disputeCount: Counter;
+
+// Stored shielded coin metadata from deposit phase (used during release / cancellation)
+export ledger depositedCoinNonce: Bytes<32>;
+export ledger depositedCoinColor: Bytes<32>;
+export ledger depositedCoinValue: Uint<128>;
+export ledger hasDeposit: Boolean;
+
+// ─── Zero-Knowledge Witnesses ───────────────────────────────────────────────
+
+witness buyerSecret(): Bytes<32>;
+witness sellerSecret(): Bytes<32>;
+witness escrowAmount(): Bytes<32>;
+witness conditionHash(): Bytes<32>;
+
+// ─── Domain-Separated Cryptographic Commitments ─────────────────────────────
+
+circuit commitBuyer(secret: Bytes<32>): Bytes<32> {
+    return persistentHash<Vector<2, Bytes<32>>>(
+        [pad(32, "midnight-lock:v1:buyer:"), secret]);
+}
+
+circuit commitSeller(secret: Bytes<32>): Bytes<32> {
+    return persistentHash<Vector<2, Bytes<32>>>(
+        [pad(32, "midnight-lock:v1:seller:"), secret]);
+}
+
+circuit commitAmount(amount: Bytes<32>): Bytes<32> {
+    return persistentHash<Vector<2, Bytes<32>>>(
+        [pad(32, "midnight-lock:v1:amount:"), amount]);
+}
+
+circuit commitCondition(condition: Bytes<32>): Bytes<32> {
+    return persistentHash<Vector<2, Bytes<32>>>(
+        [pad(32, "midnight-lock:v1:condition:"), condition]);
+}
+
+// ─── Contract Constructor ───────────────────────────────────────────────────
+
+constructor() {
+    const buyer = buyerSecret();
+    const seller = sellerSecret();
+    const amount = escrowAmount();
+    const condition = conditionHash();
+
+    buyerCommitment = disclose(commitBuyer(buyer));
+    sellerCommitment = disclose(commitSeller(seller));
+    amountCommitment = disclose(commitAmount(amount));
+    conditionCommitment = disclose(commitCondition(condition));
+    escrowState = EscrowState.STATE_CREATED;
+    hasDeposit = false;
+}
+
+// ─── Escrow Lifecycle Circuits ──────────────────────────────────────────────
+
+// deposit: Buyer deposits shielded tokens (STATE_CREATED -> STATE_FUNDED)
+export circuit deposit(value: Uint<64>): [] {
+    const buyer = buyerSecret();
+    assert(buyerCommitment == commitBuyer(buyer), "Not the buyer");
+    assert(escrowState == EscrowState.STATE_CREATED, "Escrow not in created state");
+    assert(!hasDeposit, "Already deposited");
+
+    // Mint shielded token to the contract address
+    const domain = pad(32, "haven:escrow:token");
+    const nonce = pad(32, "haven:escrow:nonce:0");
+    const coin = mintShieldedToken(
+        disclose(domain),
+        disclose(value),
+        disclose(nonce),
+        right<ZswapCoinPublicKey, ContractAddress>(kernel.self())
+    );
+
+    // Persist coin metadata in ledger for redemption or cancellation
+    depositedCoinNonce = coin.nonce;
+    depositedCoinColor = coin.color;
+    depositedCoinValue = coin.value;
+    hasDeposit = true;
+
+    depositCount.increment(1);
+    escrowState = EscrowState.STATE_FUNDED;
+}
+
+// confirmDelivery: Seller confirms order fulfillment (STATE_FUNDED -> STATE_DELIVERED)
+export circuit confirmDelivery(): [] {
+    const seller = sellerSecret();
+    assert(sellerCommitment == commitSeller(seller), "Not the seller");
+    assert(escrowState == EscrowState.STATE_FUNDED, "Escrow not in funded state");
+    escrowState = EscrowState.STATE_DELIVERED;
+}
+
+// release: Buyer releases locked funds to seller (STATE_DELIVERED -> STATE_RELEASED)
+export circuit release(sellerPubKey: ZswapCoinPublicKey, coinIndex: Uint<64>): [] {
+    const buyer = buyerSecret();
+    assert(buyerCommitment == commitBuyer(buyer), "Not the buyer");
+    assert(escrowState == EscrowState.STATE_DELIVERED, "Escrow not in delivered state");
+    assert(hasDeposit, "No deposit to release");
+
+    // Reconstruct qualified shielded coin from stored metadata + Merkle index
+    const coin = QualifiedShieldedCoinInfo {
+        nonce: depositedCoinNonce,
+        color: depositedCoinColor,
+        value: depositedCoinValue,
+        mt_index: coinIndex
+    };
+
+    // Transfer shielded tokens to seller's public key
+    sendShielded(
+        disclose(coin),
+        left<ZswapCoinPublicKey, ContractAddress>(disclose(sellerPubKey)),
+        disclose(depositedCoinValue)
+    );
+
+    hasDeposit = false;
+    escrowState = EscrowState.STATE_RELEASED;
+}
+
+// dispute: Buyer raises a dispute (STATE_FUNDED or STATE_DELIVERED -> STATE_DISPUTED)
+export circuit dispute(): [] {
+    const buyer = buyerSecret();
+    assert(buyerCommitment == commitBuyer(buyer), "Not the buyer");
+    assert(
+        escrowState == EscrowState.STATE_FUNDED || escrowState == EscrowState.STATE_DELIVERED,
+        "Cannot dispute in current state"
+    );
+    disputeCount.increment(1);
+    escrowState = EscrowState.STATE_DISPUTED;
+}
+
+// resolve: Seller resolves an active dispute (STATE_DISPUTED -> STATE_RESOLVED)
+export circuit resolve(): [] {
+    const seller = sellerSecret();
+    assert(sellerCommitment == commitSeller(seller), "Not authorized to resolve");
+    assert(escrowState == EscrowState.STATE_DISPUTED, "Escrow not in disputed state");
+    escrowState = EscrowState.STATE_RESOLVED;
+}
+
+// cancel: Cancel escrow and refund deposit (STATE_CREATED or STATE_FUNDED -> STATE_CANCELLED)
+export circuit cancel(coinIndex: Uint<64>): [] {
+    const buyer = buyerSecret();
+    assert(buyerCommitment == commitBuyer(buyer), "Not the buyer");
+    assert(
+        escrowState == EscrowState.STATE_CREATED || escrowState == EscrowState.STATE_FUNDED,
+        "Cannot cancel in current state"
+    );
+
+    if (hasDeposit) {
+        // Refund coin to contract self
+        const coin = QualifiedShieldedCoinInfo {
+            nonce: depositedCoinNonce,
+            color: depositedCoinColor,
+            value: depositedCoinValue,
+            mt_index: coinIndex
+        };
+
+        sendShielded(
+            disclose(coin),
+            right<ZswapCoinPublicKey, ContractAddress>(kernel.self()),
+            disclose(depositedCoinValue)
+        );
+
+        hasDeposit = false;
+    }
+
+    escrowState = EscrowState.STATE_CANCELLED;
+}

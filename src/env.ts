@@ -1,8 +1,8 @@
-// ─── Safe Environment Accessors ─────────────────────────────────────────────────
-// Works in both Node (process.env) and browser (import.meta.env.VITE_*).
-// In the browser, process is undefined, so we guard against that.
+// ─── Umbra Environment Accessors ─────────────────────────────────────────────
+// Provides unified environment configuration access for Node.js (process.env)
+// and browser/client runtimes (import.meta.env).
 
-function getEnv(): Record<string, string | undefined> {
+function getRuntimeEnv(): Record<string, string | undefined> {
     if (typeof process !== 'undefined' && process.env) {
         return process.env;
     }
@@ -11,17 +11,17 @@ function getEnv(): Record<string, string | undefined> {
 
 export const env = {
     get SUPABASE_URL(): string {
-        const nodeEnv = getEnv()['SUPABASE_URL'];
-        if (nodeEnv) return nodeEnv;
-        // @ts-expect-error Vite env injection
-        const viteEnv = typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL;
-        return viteEnv || '';
+        const nodeVal = getRuntimeEnv()['SUPABASE_URL'];
+        if (nodeVal) return nodeVal;
+        // @ts-expect-error Vite client runtime injection
+        const viteVal = typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_URL;
+        return viteVal || '';
     },
     get SUPABASE_ANON_KEY(): string {
-        const nodeEnv = getEnv()['SUPABASE_ANON_KEY'];
-        if (nodeEnv) return nodeEnv;
-        // @ts-expect-error Vite env injection
-        const viteEnv = typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_ANON_KEY;
-        return viteEnv || '';
+        const nodeVal = getRuntimeEnv()['SUPABASE_ANON_KEY'];
+        if (nodeVal) return nodeVal;
+        // @ts-expect-error Vite client runtime injection
+        const viteVal = typeof import.meta !== 'undefined' && import.meta.env?.VITE_SUPABASE_ANON_KEY;
+        return viteVal || '';
     },
 };
