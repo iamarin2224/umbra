@@ -8,12 +8,13 @@ Private, Zero-Knowledge Escrow on the Midnight Blockchain.
 - **Phase 3**: Compact Contract & Compiled ZK Artifacts synchronized (`contracts/escrow.compact`, `artifacts/`).
 - **Phase 4**: Core Domain Types & Transition Matrix implemented (`src/escrow/types.ts`, `src/escrow/contract.ts`).
 - **Phase 5**: Domain Verification & Witness Utilities implemented (`src/escrow/witnesses.ts`, `src/escrow/verification.ts`).
+- **Phase 6**: Private State Management Layer implemented (`src/escrow/private-state.ts`).
 - **Architecture**: Express API + Midnight Compact ZK + React/Vite UI.
 
 ## Features & Verification
 - **ZK Circuit Witness Bridges**: 32-byte normalization, cryptographic secret generation, and parameter binding.
 - **State Transition Guard**: Multi-state transition validator enforcing on-chain state machine rules.
-- **Integrity Validation**: Address, amount, condition bounds, and deterministic ID hash generation.
+- **Private State Management**: Off-chain sensitive state serialization, browser localStorage caching (`umbra:escrow:`), and in-memory test providers.
 
 ## Getting Started
 ```bash
