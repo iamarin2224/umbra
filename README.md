@@ -11,14 +11,16 @@ Private, Zero-Knowledge Escrow on the Midnight Blockchain.
 - **Phase 6**: Private State Management Layer implemented (`src/escrow/private-state.ts`).
 - **Phase 7**: Offline Mock Escrow Service & Domain Barrel Export implemented (`src/escrow/service.ts`, `src/escrow/index.ts`).
 - **Phase 8**: Network & Wallet Management Layer implemented (`src/network.ts`, `src/wallet.ts`, `src/wallet-state.ts`).
+- **Phase 9**: On-Chain Midnight Client (ZK & Prover Integration) implemented (`src/midnight-client.ts`).
 - **Architecture**: Express API + Midnight Compact ZK + React/Vite UI.
 
 ## Features & Verification
 - **ZK Circuit Witness Bridges**: 32-byte normalization, cryptographic secret generation, and parameter binding.
 - **State Transition Guard**: Multi-state transition validator enforcing on-chain state machine rules.
-- **Private State Management**: Off-chain sensitive state serialization, browser localStorage caching (`umbra:escrow:`), and in-memory test providers.
+- **Private State Management**: Off-chain sensitive state serialization, browser localStorage caching (`umbra:escrow:`), LevelDB encrypted store (`umbra-escrow-state`), and in-memory test providers.
 - **Offline Mock Escrow Service**: Full simulated lifecycle management, Supabase write-through synchronization, and in-memory query filters.
-- **Midnight Network & HD Wallet Layer**: Network resolution (`preprod`/`preview`/`undeployed`), BIP-39 mnemonic phrase management, tripartite child wallet derivation (`ShieldedWallet`, `UnshieldedWallet`, `DustWallet`), and atomic disk caching (`.midnight-wallet-state`).
+- **Midnight Network & HD Wallet Layer**: Network resolution (`preprod`/`preview`/`undeployed`), BIP-39 mnemonic phrase management, tripartite child wallet derivation (`ShieldedWallet`, `UnshieldedWallet`, `DustWallet`), and atomic disk caching.
+- **On-Chain Midnight Client**: Singleton client interfacing with `midnight-js`, Proof Server (:6300), LevelDB encrypted private state, on-chain deployment (`deployEscrowOnChain`), circuit execution (`callCircuit`), and Merkle tree index lookups (`getCoinMtIndex`).
 
 ## Getting Started
 ```bash
