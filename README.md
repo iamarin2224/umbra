@@ -6,6 +6,7 @@ Private, Zero-Knowledge Escrow on the Midnight Blockchain.
 - **Phase 1**: Project Scaffolding & Configuration initialized.
 - **Phase 2**: Database Schema & Environment Layer configured (`supabase/schema.sql`, `src/env.ts`).
 - **Phase 3**: Compact Contract & Compiled ZK Artifacts synchronized (`contracts/escrow.compact`, `artifacts/`).
+- **Phase 4**: Core Domain Types & Transition Matrix implemented (`src/escrow/types.ts`, `src/escrow/contract.ts`, `tests/contract.test.ts`).
 - **Architecture**: Express API + Midnight Compact ZK + React/Vite UI.
 
 ## Contract Capabilities
@@ -17,6 +18,9 @@ Private, Zero-Knowledge Escrow on the Midnight Blockchain.
 ```bash
 # Install backend dependencies
 npm install
+
+# Run contract domain unit tests
+npm test
 
 # Typecheck and lint
 npm run typecheck
