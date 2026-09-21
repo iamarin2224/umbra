@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Umbra Diagnostic Harness</title>
+  <style>
+    :root {
+      --bg: #090a0f;
+      --card: #12141c;
+      --border: #1e2230;
+      --accent: #00f0ff;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --success: #10b981;
+      --error: #ef4444;
+    }
+    body {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      background: var(--bg);
+      color: var(--text);
+      margin: 0;
+      padding: 24px;
+    }
+    h1 {
+      font-size: 20px;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+    .status {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 24px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+    }
+    .card h2 {
+      font-size: 14px;
+      color: var(--accent);
+      margin-top: 0;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    button {
+      background: #1e293b;
+      color: var(--text);
+      border: 1px solid var(--border);
+      padding: 8px 12px;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 12px;
+      cursor: pointer;
+      margin-right: 8px;
+      margin-bottom: 8px;
+      transition: all 0.2s;
+    }
+    button:hover {
+      background: var(--accent);
+      color: #000;
+      border-color: var(--accent);
+    }
+    input, textarea {
+      width: 100%;
+      background: #0d1117;
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 8px;
+      border-radius: 4px;
+      font-family: inherit;
+      font-size: 12px;
+      box-sizing: border-box;
+      margin-bottom: 8px;
+    }
+    pre {
+      background: #07080c;
+      border: 1px solid var(--border);
+      padding: 12px;
+      border-radius: 4px;
+      font-size: 11px;
+      overflow-x: auto;
+      max-height: 250px;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .badge {
+      display: inline-block;
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-size: 10px;
+      font-weight: bold;
+    }
+    .badge.ok { background: rgba(16, 185, 129, 0.2); color: var(--success); }
+    .badge.err { background: rgba(239, 68, 68, 0.2); color: var(--error); }
+  </style>
+</head>
+<body>
+  <h1>UMBRA :: Diagnostic Verification Harness</h1>
+  <div class="status">Direct Backend API Verification Suite &bull; Target: <span id="api-target">http://localhost:3001</span></div>
+
+  <div class="grid">
+    <!-- Health & Wallet -->
+    <div class="card">
+      <h2>1. Server & Wallet Telemetry</h2>
+      <button onclick="checkHealth()">Ping Health (/api/health)</button>
+      <button onclick="getCoins()">Fetch Coins (/api/wallet/coins)</button>
+      <button onclick="getPublicKey()">Get Public Key (/api/wallet/public-key)</button>
+      <div id="telemetry-log"></div>
+    </div>
+
+    <!-- Escrow List -->
+    <div class="card">
+      <h2>2. Escrow Query Stream</h2>
+      <input type="text" id="filter-buyer" placeholder="Filter by Buyer Address (optional)" />
+      <button onclick="fetchEscrows()">Fetch Escrows (/api/escrows)</button>
+      <div id="query-log"></div>
+    </div>
+
+    <!-- Deploy Escrow -->
+    <div class="card">
+      <h2>3. Deploy On-Chain Escrow</h2>
+      <input type="text" id="deploy-buyer" placeholder="Buyer Address" value="mn_shielded_buyer_test_address_001" />
+      <input type="text" id="deploy-seller" placeholder="Seller Address" value="mn_shielded_seller_test_address_002" />
+      <input type="text" id="deploy-amount" placeholder="Amount" value="50.00" />
+      <input type="text" id="deploy-condition" placeholder="Condition" value="Deliver diagnostic proof" />
+      <button onclick="deployEscrow()">POST /api/escrows</button>
+      <div id="deploy-log"></div>
+    </div>
+
+    <!-- Transition Action -->
+    <div class="card">
+      <h2>4. Execute State Transition</h2>
+      <input type="text" id="action-escrow-id" placeholder="Escrow ID" />
+      <input type="text" id="action-name" placeholder="Action (deposit/confirmDelivery/release/cancel/dispute/resolve)" value="deposit" />
+      <input type="text" id="action-value" placeholder="Deposit Value (bigint / amount string)" value="50.00" />
+      <input type="text" id="action-seller-key" placeholder="Seller Public Key (hex, for release)" />
+      <button onclick="executeAction()">POST /api/escrows/:id/action</button>
+      <div id="action-log"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Console Output Terminal</h2>
+    <pre id="output">Diagnostic harness initialized. Ensure API server is active on http://localhost:3001.</pre>
+  </div>
+
+  <script>
+    const API_URL = 'http://localhost:3001';
+
+    function log(title, data, isError = false) {
+      const output = document.getElementById('output');
+      const timestamp = new Date().toLocaleTimeString();
+      const formatted = typeof data === 'object' ? JSON.stringify(data, null, 2) : data;
+      output.innerHTML = `[${timestamp}] ${title}:\n${formatted}\n\n` + output.innerHTML;
+    }
+
+    async function checkHealth() {
+      try {
+        const res = await fetch(`${API_URL}/api/health`);
+        const json = await res.json();
+        log('Health Check', json);
+      } catch (err) {
+        log('Health Check Error', err.message, true);
+      }
+    }
+
+    async function getCoins() {
+      try {
+        const res = await fetch(`${API_URL}/api/wallet/coins`);
+        const json = await res.json();
+        log('Available Coins', json);
+      } catch (err) {
+        log('Get Coins Error', err.message, true);
+      }
+    }
+
+    async function getPublicKey() {
+      try {
+        const res = await fetch(`${API_URL}/api/wallet/public-key`);
+        const json = await res.json();
+        log('Coin Public Key', json);
+      } catch (err) {
+        log('Get Public Key Error', err.message, true);
+      }
+    }
+
+    async function fetchEscrows() {
+      const buyer = document.getElementById('filter-buyer').value.trim();
+      const url = buyer ? `${API_URL}/api/escrows?buyerAddress=${encodeURIComponent(buyer)}` : `${API_URL}/api/escrows`;
+      try {
+        const res = await fetch(url);
+        const json = await res.json();
+        log('Escrows Query', json);
+      } catch (err) {
+        log('Fetch Escrows Error', err.message, true);
+      }
+    }
+
+    async function deployEscrow() {
+      const buyerAddress = document.getElementById('deploy-buyer').value.trim();
+      const sellerAddress = document.getElementById('deploy-seller').value.trim();
+      const amount = document.getElementById('deploy-amount').value.trim();
+      const condition = document.getElementById('deploy-condition').value.trim();
+
+      try {
+        const res = await fetch(`${API_URL}/api/escrows`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ buyerAddress, sellerAddress, amount, condition })
+        });
+        const json = await res.json();
+        log('Deploy Escrow Response', json);
+        if (json.id) {
+          document.getElementById('action-escrow-id').value = json.id;
+        }
+      } catch (err) {
+        log('Deploy Escrow Error', err.message, true);
+      }
+    }
+
+    async function executeAction() {
+      const id = document.getElementById('action-escrow-id').value.trim();
+      const action = document.getElementById('action-name').value.trim();
+      const value = document.getElementById('action-value').value.trim();
+      const sellerPubKey = document.getElementById('action-seller-key').value.trim();
+
+      if (!id) {
+        alert('Please specify an Escrow ID');
+        return;
+      }
+
+      const body = { action };
+      if (action === 'deposit' && value) body.value = value;
+      if (action === 'release' && sellerPubKey) body.sellerPubKey = sellerPubKey;
+
+      try {
+        const res = await fetch(`${API_URL}/api/escrows/${encodeURIComponent(id)}/action`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        const json = await res.json();
+        log(`Action [${action}] Response`, json);
+      } catch (err) {
+        log(`Action [${action}] Error`, err.message, true);
+      }
+    }
+  </script>
+</body>
+</html>
