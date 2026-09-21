@@ -86,10 +86,12 @@ playwright-report/
 # TypeScript
 *.tsbuildinfo
 
-# Misc / Plans
+# Misc / Plans / Preview
 opencode_ses.txt
 *.pem
 *.key
 umbra_port_plan.md
 *plan.md
 *plan*.md
+umbra_ui_preview.html
+*preview*.html

@@ -1,0 +1,120 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+:root {
+  --bg-canvas: #040507;
+
+  /* Smoked obsidian frosted glass surfaces */
+  --glass-base: rgba(14, 16, 24, 0.55);
+  --glass-surface: rgba(16, 19, 28, 0.68);
+  --glass-hover: rgba(22, 26, 38, 0.8);
+  --glass-active: rgba(26, 30, 44, 0.88);
+
+  /* Stateless boundaries with specular highlights */
+  --border-whisper: rgba(255, 255, 255, 0.06);
+  --border-sheen: rgba(255, 255, 255, 0.16);
+
+  /* Neon accents */
+  --cyan: #00f0ff;
+  --cyan-glow: rgba(0, 240, 255, 0.25);
+  --amethyst: #c084fc;
+  --amethyst-glow: rgba(192, 132, 252, 0.2);
+  --emerald: #34d399;
+  --emerald-glow: rgba(52, 211, 153, 0.2);
+  --gold: #fbbf24;
+  --crimson: #fb7185;
+
+  /* Typography */
+  --text-hero: #fbfbfd;
+  --text-sub: #a1a1a6;
+  --text-faint: #6e6e73;
+
+  --font-display: 'Space Grotesk', -apple-system, sans-serif;
+  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+
+  --ease-apple: cubic-bezier(0.25, 1, 0.5, 1);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  background-color: var(--bg-canvas);
+  color: var(--text-hero);
+  font-family: var(--font-body);
+  min-height: 100vh;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Hide default cursor on desktop when interactive cursor is active */
+@media (hover: hover) and (pointer: fine) {
+  body, a, button, input, textarea, select {
+    cursor: none !important;
+  }
+}
+
+::selection {
+  background: rgba(0, 240, 255, 0.25);
+  color: #ffffff;
+}
+
+/* Fluid glass card utilities */
+.fluid-glass-panel {
+  background: var(--glass-base);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  border: 1px solid var(--border-whisper);
+  border-radius: 20px;
+  padding: 28px;
+  transition: all 0.4s var(--ease-apple);
+  position: relative;
+  overflow: hidden;
+}
+
+.fluid-glass-panel::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 60%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  opacity: 0.6;
+  transition: opacity 0.4s ease;
+}
+
+.fluid-glass-panel:hover {
+  background: var(--glass-hover);
+  border-color: rgba(255, 255, 255, 0.14);
+  transform: translateY(-3px);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 240, 255, 0.05);
+}
+
+.fluid-glass-panel:hover::before {
+  opacity: 1;
+}
+
+/* React Bits custom spotlight card */
+.custom-spotlight-card {
+  background: var(--glass-base);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  border: 1px solid var(--border-whisper);
+  border-radius: 20px;
+  transition: all 0.4s var(--ease-apple);
+}
+
+.custom-spotlight-card:hover {
+  background: var(--glass-hover);
+  border-color: rgba(255, 255, 255, 0.16);
+  transform: translateY(-2px);
+  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 240, 255, 0.08);
+}
