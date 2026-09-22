@@ -7,6 +7,8 @@ import { HeaderHUD, NavTab } from './components/HeaderHUD';
 import { TelemetryBar } from './components/TelemetryBar';
 import { EscrowMatrix } from './components/EscrowMatrix';
 import { EscrowInspectorModal } from './components/EscrowInspectorModal';
+import { CreateEscrowModal } from './components/CreateEscrowModal';
+import { ActionModal } from './components/ActionModal';
 import { FooterHUD } from './components/FooterHUD';
 import { useEscrowService } from './hooks/useEscrowService';
 import { EscrowRecord, EscrowActionType } from './types/escrow';
@@ -15,6 +17,9 @@ export function App() {
   const [activeTab, setActiveTab] = useState<NavTab>('escrows');
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [inspectorOpen, setInspectorOpen] = useState<boolean>(false);
+  const [createModalOpen, setCreateModalOpen] = useState<boolean>(false);
+  const [actionModalEscrow, setActionModalEscrow] = useState<EscrowRecord | null>(null);
+  const [pendingActionType, setPendingActionType] = useState<EscrowActionType | null>(null);
 
   const {
     filteredEscrows,
@@ -28,6 +33,7 @@ export function App() {
     actionLoading,
     refreshing,
     refresh,
+    createEscrow,
     executeAction,
     isBackendOnline,
   } = useEscrowService();
@@ -50,16 +56,17 @@ export function App() {
   const condCommitment = hashString(condWitness, '0x');
   const amtCommitment = hashString(amtWitness, '0x820c741e2f9821ef');
 
-  const handleAction = async (escrow: EscrowRecord, action: EscrowActionType) => {
-    try {
-      await executeAction(escrow.id, action);
-    } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Action failed');
-    }
+  const handleOpenActionModal = (escrow: EscrowRecord, action: EscrowActionType) => {
+    setActionModalEscrow(escrow);
+    setPendingActionType(action);
   };
 
-  const handleCreateMock = () => {
-    alert('Create Escrow modal flow (Phase 20)');
+  const handleExecuteAction = async (escrowId: string, action: EscrowActionType, params?: { value?: string }) => {
+    await executeAction(escrowId, action, params);
+  };
+
+  const handleDeployEscrow = async (data: { sellerAddress: string; amount: string; condition: string }) => {
+    await createEscrow(data);
   };
 
   return (
@@ -104,7 +111,7 @@ export function App() {
         isBackendOnline={isBackendOnline}
         refreshing={refreshing}
         onRefresh={refresh}
-        onCreateClick={handleCreateMock}
+        onCreateClick={() => setCreateModalOpen(true)}
       />
 
       {/* ── Main Workspace ── */}
@@ -239,9 +246,9 @@ export function App() {
                     setSelectedEscrow(item);
                     setInspectorOpen(true);
                   }}
-                  onAction={handleAction}
+                  onAction={handleOpenActionModal}
                   isActionLoading={actionLoading}
-                  onCreateClick={handleCreateMock}
+                  onCreateClick={() => setCreateModalOpen(true)}
                 />
               </motion.section>
             )}
@@ -675,8 +682,29 @@ export circuit release_funds(witness b_secret: Bytes<32>): Void {
           setInspectorOpen(false);
           setSelectedEscrow(null);
         }}
-        onAction={handleAction}
+        onAction={handleOpenActionModal}
         isActionLoading={actionLoading}
+      />
+
+      {/* ── Create Escrow Tactical Modal (Phase 20) ── */}
+      <CreateEscrowModal
+        isOpen={createModalOpen}
+        onClose={() => setCreateModalOpen(false)}
+        onSubmit={handleDeployEscrow}
+        isLoading={actionLoading}
+      />
+
+      {/* ── Action / Transition Circuit Modal (Phase 20) ── */}
+      <ActionModal
+        isOpen={!!actionModalEscrow && !!pendingActionType}
+        onClose={() => {
+          setActionModalEscrow(null);
+          setPendingActionType(null);
+        }}
+        escrow={actionModalEscrow}
+        actionType={pendingActionType}
+        onConfirm={handleExecuteAction}
+        isLoading={actionLoading}
       />
 
       {/* ── Umbra Footer HUD (Phase 18) ── */}
