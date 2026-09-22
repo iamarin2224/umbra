@@ -4,12 +4,12 @@ import { Shield, Sparkles, Cpu, Layers, Lock, CheckCircle2, ChevronDown, Externa
 import Galaxy from './components/Galaxy';
 import SpotlightCard from './components/SpotlightCard';
 import { FluidCursor } from './components/FluidCursor';
+import { WalletHUD } from './components/WalletHUD';
 
 type NavTab = 'escrows' | 'stats' | 'explorer' | 'about';
 
 export function App() {
   const [activeTab, setActiveTab] = useState<NavTab>('escrows');
-  const [walletConnected, setWalletConnected] = useState(false);
   const [openFaq, setOpenFaq] = useState<number | null>(0);
   const [filter, setFilter] = useState<'all' | 'funded' | 'delivered' | 'released'>('all');
 
@@ -180,31 +180,9 @@ export function App() {
           })}
         </nav>
 
-        {/* Right: Status & Connect */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '14px', justifySelf: 'end' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-faint)' }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--emerald)', boxShadow: '0 0 8px var(--emerald)' }} />
-            <span>ENCLAVE</span>
-          </div>
-
-          <button
-            onClick={() => setWalletConnected(!walletConnected)}
-            style={{
-              background: walletConnected ? 'rgba(52, 211, 153, 0.15)' : 'rgba(255, 255, 255, 0.08)',
-              border: `1px solid ${walletConnected ? 'rgba(52, 211, 153, 0.4)' : 'rgba(255, 255, 255, 0.12)'}`,
-              color: walletConnected ? 'var(--emerald)' : 'var(--text-hero)',
-              fontFamily: 'var(--font-body)',
-              fontSize: '12px',
-              fontWeight: 500,
-              padding: '6px 16px',
-              borderRadius: '9999px',
-              cursor: 'pointer',
-              transition: 'all 0.3s var(--ease-apple)',
-              boxShadow: 'inset 0 1px 0 rgba(255, 255, 255, 0.15)',
-            }}
-          >
-            {walletConnected ? 'mn_shielded_...8a92' : 'Connect Lace'}
-          </button>
+        {/* Right: Wallet HUD */}
+        <div style={{ justifySelf: 'end' }}>
+          <WalletHUD />
         </div>
       </header>
 
