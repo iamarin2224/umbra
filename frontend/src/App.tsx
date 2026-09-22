@@ -6,6 +6,7 @@ import { FluidCursor } from './components/FluidCursor';
 import { HeaderHUD, NavTab } from './components/HeaderHUD';
 import { TelemetryBar } from './components/TelemetryBar';
 import { EscrowMatrix } from './components/EscrowMatrix';
+import { EscrowInspectorModal } from './components/EscrowInspectorModal';
 import { FooterHUD } from './components/FooterHUD';
 import { useEscrowService } from './hooks/useEscrowService';
 import { EscrowRecord, EscrowActionType } from './types/escrow';
@@ -13,12 +14,15 @@ import { EscrowRecord, EscrowActionType } from './types/escrow';
 export function App() {
   const [activeTab, setActiveTab] = useState<NavTab>('escrows');
   const [openFaq, setOpenFaq] = useState<number | null>(0);
+  const [inspectorOpen, setInspectorOpen] = useState<boolean>(false);
 
   const {
     filteredEscrows,
+    events,
     stats,
     filter,
     setFilter,
+    selectedEscrow,
     setSelectedEscrow,
     loading,
     actionLoading,
@@ -231,7 +235,10 @@ export function App() {
                   escrows={filteredEscrows}
                   filter={filter}
                   onFilterChange={setFilter}
-                  onSelectEscrow={(item) => setSelectedEscrow(item)}
+                  onSelectEscrow={(item) => {
+                    setSelectedEscrow(item);
+                    setInspectorOpen(true);
+                  }}
                   onAction={handleAction}
                   isActionLoading={actionLoading}
                   onCreateClick={handleCreateMock}
@@ -658,6 +665,19 @@ export circuit release_funds(witness b_secret: Bytes<32>): Void {
           </AnimatePresence>
         </div>
       </main>
+
+      {/* ── Escrow Deep Audit Inspector Modal (Phase 21) ── */}
+      <EscrowInspectorModal
+        isOpen={inspectorOpen}
+        escrow={selectedEscrow}
+        events={events}
+        onClose={() => {
+          setInspectorOpen(false);
+          setSelectedEscrow(null);
+        }}
+        onAction={handleAction}
+        isActionLoading={actionLoading}
+      />
 
       {/* ── Umbra Footer HUD (Phase 18) ── */}
       <FooterHUD />
