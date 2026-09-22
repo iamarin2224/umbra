@@ -19,7 +19,13 @@ Private, Zero-Knowledge Escrow on the Midnight Blockchain.
 - **Phase 14**: Visual Design Engine, WebGL 3D Galaxy Parallax (`@react-bits/Backgrounds-TS-TW`), Interactive Spotlight Cards (`@react-bits/Components-TS-TW`), Smoked Obsidian Glassmorphism, and Centered Apple-Style HUD.
 - **Phase 15**: Frontend Domain Types, API Client & Data Access Layer (`frontend/src/types/`, `frontend/src/lib/api.ts`, `frontend/src/lib/supabase.ts`).
 - **Phase 16**: Midnight Wallet Integration Layer & Lace DApp Connector (`frontend/src/context/MidnightWalletContext.tsx`, `frontend/src/components/WalletHUD.tsx`).
-- **Backend & Wallet Layer Complete**: 100% of backend architecture, ZK circuits, API endpoints, design engine, and Midnight Lace wallet integrations are fully verified.
+- **Phase 17**: Escrow State Hook & Reactive Business Logic (`frontend/src/hooks/useEscrowService.ts`).
+- **Phase 18**: Header HUD Command Bar & Telemetry Metrics (`frontend/src/components/HeaderHUD.tsx`, `frontend/src/components/TelemetryBar.tsx`, `frontend/src/components/FooterHUD.tsx`).
+- **Phase 19**: Escrow Command Matrix & Interactive Spotlight Cards (`frontend/src/components/EscrowMatrix.tsx`, `frontend/src/components/EscrowCard.tsx`, `frontend/src/components/PrivacyShield.tsx`).
+- **Phase 20**: Tactical Creation & Transition Modals (`frontend/src/components/CreateEscrowModal.tsx`, `frontend/src/components/ActionModal.tsx`).
+- **Phase 21**: Deep Audit Inspector Terminal & State Visualizer (`frontend/src/components/EscrowInspectorModal.tsx`, `frontend/src/components/StateFlowVisualizer.tsx`, `frontend/src/components/TransactionStream.tsx`).
+- **Phase 22**: Auxiliary Views Modularization & Complete E2E Verification (`frontend/src/components/ZKExplorerView.tsx`, `frontend/src/components/ProtocolMetricsView.tsx`, `frontend/src/components/AboutUmbraView.tsx`).
+- **Umbra System Complete**: 100% of the 22-phase architecture, smart contracts, ZK circuit bindings, Express API server, and cyber-obsidian frontend application are built and verified.
 
 ## API Endpoints (`src/server.ts`)
 - `GET  /api/health` — Health and telemetry check
