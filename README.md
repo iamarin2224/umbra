@@ -17,7 +17,8 @@ Private, Zero-Knowledge Escrow on the Midnight Blockchain.
 - **Phase 12**: CLI Deploy Script, E2E Suite & Diagnostic Testing Harness implemented (`scripts/deploy.ts`, `tests/e2e-preprod.ts`, `diagnostic/index.html`).
 - **Phase 13**: Modern Frontend Tooling & React 19 Scaffolding (`frontend/package.json`, `frontend/vite.config.ts`, TypeScript config).
 - **Phase 14**: Visual Design Engine, WebGL 3D Galaxy Parallax (`@react-bits/Backgrounds-TS-TW`), Interactive Spotlight Cards (`@react-bits/Components-TS-TW`), Smoked Obsidian Glassmorphism, and Centered Apple-Style HUD.
-- **Backend & Design Engine Complete**: 100% of backend architecture, ZK circuits, API endpoints, and frontend design system are fully verified.
+- **Phase 15**: Frontend Domain Types, API Client & Data Access Layer (`frontend/src/types/`, `frontend/src/lib/api.ts`, `frontend/src/lib/supabase.ts`).
+- **Backend & Data Access Layer Complete**: 100% of backend architecture, ZK circuits, API endpoints, frontend design system, and data access layers are fully verified.
 
 ## API Endpoints (`src/server.ts`)
 - `GET  /api/health` — Health and telemetry check
