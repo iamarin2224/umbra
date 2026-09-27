@@ -1,38 +1,48 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600;700&family=Geist:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
 
 :root {
-  --bg-canvas: #040507;
+  --bg-canvas: #07080c;
+  --bg-subtle: #0d1017;
+  --bg-card: rgba(13, 16, 23, 0.72);
+  --bg-card-hover: rgba(18, 22, 32, 0.85);
 
   /* Smoked obsidian frosted glass surfaces */
-  --glass-base: rgba(14, 16, 24, 0.55);
-  --glass-surface: rgba(16, 19, 28, 0.68);
-  --glass-hover: rgba(22, 26, 38, 0.8);
-  --glass-active: rgba(26, 30, 44, 0.88);
+  --glass-base: rgba(13, 16, 23, 0.65);
+  --glass-surface: rgba(16, 20, 30, 0.75);
+  --glass-hover: rgba(22, 27, 40, 0.85);
+  --glass-active: rgba(28, 34, 50, 0.92);
 
-  /* Stateless boundaries with specular highlights */
-  --border-whisper: rgba(255, 255, 255, 0.06);
-  --border-sheen: rgba(255, 255, 255, 0.16);
+  /* Precise minimal borders */
+  --border-whisper: rgba(255, 255, 255, 0.08);
+  --border-sheen: rgba(255, 255, 255, 0.14);
+  --border-active: rgba(0, 240, 255, 0.35);
 
   /* Neon accents */
   --cyan: #00f0ff;
-  --cyan-glow: rgba(0, 240, 255, 0.25);
+  --cyan-dim: rgba(0, 240, 255, 0.12);
+  --cyan-glow: rgba(0, 240, 255, 0.22);
   --amethyst: #c084fc;
+  --amethyst-dim: rgba(192, 132, 252, 0.12);
   --amethyst-glow: rgba(192, 132, 252, 0.2);
   --emerald: #34d399;
+  --emerald-dim: rgba(52, 211, 153, 0.12);
   --emerald-glow: rgba(52, 211, 153, 0.2);
   --gold: #fbbf24;
+  --gold-dim: rgba(251, 191, 36, 0.12);
   --crimson: #fb7185;
+  --crimson-dim: rgba(251, 113, 133, 0.12);
 
   /* Typography */
   --text-hero: #fbfbfd;
-  --text-sub: #a1a1a6;
-  --text-faint: #6e6e73;
+  --text-body: #d1d5db;
+  --text-sub: #9ca3af;
+  --text-faint: #64748b;
 
-  --font-display: 'Space Grotesk', -apple-system, sans-serif;
-  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  --font-display: 'Geist', 'Plus Jakarta Sans', -apple-system, sans-serif;
+  --font-body: 'Geist', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'Geist Mono', 'JetBrains Mono', monospace;
 
-  --ease-apple: cubic-bezier(0.25, 1, 0.5, 1);
+  --ease-apple: cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 * {
@@ -51,6 +61,25 @@ html, body {
   -moz-osx-font-smoothing: grayscale;
 }
 
+/* Custom sleek scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(4, 5, 7, 0.6);
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
 /* Hide default cursor on desktop when interactive cursor is active */
 @media (hover: hover) and (pointer: fine) {
   body, a, button, input, textarea, select {
@@ -66,55 +95,38 @@ html, body {
 /* Fluid glass card utilities */
 .fluid-glass-panel {
   background: var(--glass-base);
-  backdrop-filter: blur(32px) saturate(180%);
-  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid var(--border-whisper);
-  border-radius: 20px;
-  padding: 28px;
-  transition: all 0.4s var(--ease-apple);
+  border-radius: 14px;
+  padding: 24px;
+  transition: all 0.3s var(--ease-apple);
   position: relative;
   overflow: hidden;
 }
 
-.fluid-glass-panel::before {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: 20px;
-  padding: 1px;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.12), transparent 60%);
-  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask-composite: exclude;
-  pointer-events: none;
-  opacity: 0.6;
-  transition: opacity 0.4s ease;
-}
-
 .fluid-glass-panel:hover {
   background: var(--glass-hover);
-  border-color: rgba(255, 255, 255, 0.14);
-  transform: translateY(-3px);
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 240, 255, 0.05);
+  border-color: var(--border-sheen);
 }
 
-.fluid-glass-panel:hover::before {
-  opacity: 1;
-}
-
-/* React Bits custom spotlight card */
+/* Custom spotlight card utility */
 .custom-spotlight-card {
   background: var(--glass-base);
-  backdrop-filter: blur(32px) saturate(180%);
-  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
   border: 1px solid var(--border-whisper);
-  border-radius: 20px;
-  transition: all 0.4s var(--ease-apple);
+  border-radius: 14px;
+  transition: all 0.3s var(--ease-apple);
 }
 
 .custom-spotlight-card:hover {
   background: var(--glass-hover);
-  border-color: rgba(255, 255, 255, 0.16);
-  transform: translateY(-2px);
-  box-shadow: 0 20px 48px rgba(0, 0, 0, 0.5), 0 0 30px rgba(0, 240, 255, 0.08);
+  border-color: var(--border-sheen);
+}
+
+/* Form input focus styles */
+input:focus, textarea:focus {
+  border-color: rgba(0, 240, 255, 0.5) !important;
+  box-shadow: 0 0 0 1px rgba(0, 240, 255, 0.25) !important;
 }

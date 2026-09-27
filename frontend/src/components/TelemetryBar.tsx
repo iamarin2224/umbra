@@ -5,8 +5,6 @@ import {
   ShieldCheck,
   Flame,
   AlertTriangle,
-  Lock,
-  Layers,
 } from 'lucide-react';
 import { EscrowStats } from '../hooks/useEscrowService';
 import SpotlightCard from './SpotlightCard';
@@ -16,164 +14,119 @@ interface TelemetryBarProps {
   isBackendOnline: boolean;
 }
 
-export const TelemetryBar: React.FC<TelemetryBarProps> = ({ stats, isBackendOnline }) => {
-  const metricCards = [
+export const TelemetryBar: React.FC<TelemetryBarProps> = ({ stats }) => {
+  const metricItems = [
     {
       id: 'tvl',
-      label: 'Locked Volume (TVL)',
+      label: 'Locked Volume',
       value: `${stats.totalVolume.toLocaleString()} tDUST`,
-      sub: 'Shielded in Midnight Enclave',
-      icon: <Coins size={18} color="#00f0ff" />,
-      accent: 'rgba(0, 240, 255, 0.15)',
-      spotlight: 'rgba(0, 240, 255, 0.25)',
-      borderColor: 'rgba(0, 240, 255, 0.3)',
+      icon: <Coins size={15} color="var(--cyan)" />,
+      accentColor: 'var(--cyan)',
     },
     {
       id: 'active',
       label: 'Active Agreements',
       value: stats.activeCount.toString(),
-      sub: 'Funded & In-Flight Proofs',
-      icon: <Flame size={18} color="#fbbf24" />,
-      accent: 'rgba(251, 191, 36, 0.15)',
-      spotlight: 'rgba(251, 191, 36, 0.25)',
-      borderColor: 'rgba(251, 191, 36, 0.3)',
+      icon: <Flame size={15} color="var(--gold)" />,
+      accentColor: 'var(--gold)',
     },
     {
       id: 'settled',
       label: 'Settled Escrows',
       value: stats.completedCount.toString(),
-      sub: '100% Zero-Knowledge Verified',
-      icon: <ShieldCheck size={18} color="#34d399" />,
-      accent: 'rgba(52, 211, 153, 0.15)',
-      spotlight: 'rgba(52, 211, 153, 0.25)',
-      borderColor: 'rgba(52, 211, 153, 0.3)',
+      icon: <ShieldCheck size={15} color="var(--emerald)" />,
+      accentColor: 'var(--emerald)',
     },
     {
       id: 'disputes',
       label: 'Disputed Cases',
       value: stats.disputedCount.toString(),
-      sub: 'Pending Arbiter Review',
-      icon: <AlertTriangle size={18} color={stats.disputedCount > 0 ? '#fb7185' : 'var(--text-faint)'} />,
-      accent: stats.disputedCount > 0 ? 'rgba(251, 113, 133, 0.15)' : 'rgba(255, 255, 255, 0.03)',
-      spotlight: 'rgba(251, 113, 133, 0.2)',
-      borderColor: stats.disputedCount > 0 ? 'rgba(251, 113, 133, 0.3)' : 'var(--border-whisper)',
+      icon: <AlertTriangle size={15} color={stats.disputedCount > 0 ? 'var(--crimson)' : 'var(--text-faint)'} />,
+      accentColor: stats.disputedCount > 0 ? 'var(--crimson)' : 'var(--text-sub)',
     },
   ];
 
   return (
     <div
       style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-        gap: 16,
-        marginBottom: 28,
+        marginBottom: '24px',
       }}
     >
-      {metricCards.map((item, idx) => (
-        <motion.div
-          key={item.id}
-          initial={{ opacity: 0, y: 15 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, delay: idx * 0.08 }}
+      <SpotlightCard
+        spotlightColor="rgba(0, 240, 255, 0.12)"
+        style={{
+          background: 'rgba(13, 16, 23, 0.65)',
+          backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          border: '1px solid var(--border-whisper)',
+          borderRadius: '12px',
+          padding: '0',
+          overflow: 'hidden',
+        }}
+      >
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+          }}
         >
-          <SpotlightCard
-            spotlightColor={item.spotlight}
-            style={{
-              background: 'rgba(14, 16, 24, 0.65)',
-              backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
-              border: `1px solid ${item.borderColor}`,
-              borderRadius: 16,
-              padding: '20px 22px',
-              position: 'relative',
-              overflow: 'hidden',
-            }}
-          >
+          {metricItems.map((item, idx) => (
             <div
+              key={item.id}
               style={{
+                padding: '16px 20px',
+                borderRight: idx < metricItems.length - 1 ? '1px solid var(--border-whisper)' : 'none',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'space-between',
-                marginBottom: 12,
+                gap: 16,
               }}
             >
-              <span
-                style={{
-                  fontSize: 12,
-                  fontFamily: 'var(--font-mono)',
-                  color: 'var(--text-sub)',
-                  letterSpacing: '0.04em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                {item.label}
-              </span>
+              <div>
+                <div
+                  style={{
+                    fontSize: '11px',
+                    fontFamily: 'var(--font-mono)',
+                    color: 'var(--text-sub)',
+                    letterSpacing: '0.04em',
+                    textTransform: 'uppercase',
+                    marginBottom: '4px',
+                  }}
+                >
+                  {item.label}
+                </div>
+                <div
+                  style={{
+                    fontSize: '20px',
+                    fontFamily: 'var(--font-display)',
+                    fontWeight: 700,
+                    color: '#ffffff',
+                    letterSpacing: '-0.02em',
+                  }}
+                >
+                  {item.value}
+                </div>
+              </div>
+
               <div
                 style={{
                   width: 32,
                   height: 32,
                   borderRadius: 8,
-                  background: item.accent,
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid var(--border-whisper)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
+                  flexShrink: 0,
                 }}
               >
                 {item.icon}
               </div>
             </div>
-
-            <div
-              style={{
-                fontSize: 24,
-                fontFamily: 'var(--font-display)',
-                fontWeight: 700,
-                color: 'var(--text-hero)',
-                letterSpacing: '-0.02em',
-                marginBottom: 4,
-              }}
-            >
-              {item.value}
-            </div>
-
-            <div
-              style={{
-                fontSize: 11,
-                fontFamily: 'var(--font-mono)',
-                color: 'var(--text-faint)',
-              }}
-            >
-              {item.sub}
-            </div>
-
-            {item.id === 'tvl' && (
-              <div
-                style={{
-                  marginTop: 10,
-                  paddingTop: 10,
-                  borderTop: '1px solid var(--border-whisper)',
-                  fontSize: 10,
-                  fontFamily: 'var(--font-mono)',
-                  color: isBackendOnline ? 'var(--emerald)' : 'var(--crimson)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                }}
-              >
-                <span
-                  style={{
-                    width: 6,
-                    height: 6,
-                    borderRadius: '50%',
-                    background: isBackendOnline ? 'var(--emerald)' : 'var(--crimson)',
-                  }}
-                />
-                {isBackendOnline ? 'API LINK NOMINAL' : 'API LINK DOWN'}
-              </div>
-            )}
-          </SpotlightCard>
-        </motion.div>
-      ))}
+          ))}
+        </div>
+      </SpotlightCard>
     </div>
   );
 };

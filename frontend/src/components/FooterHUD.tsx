@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, ExternalLink, GitBranch, Key, Activity } from 'lucide-react';
+import { Shield, ExternalLink, Key } from 'lucide-react';
 
 export const FooterHUD: React.FC = () => {
   return (
@@ -7,42 +7,42 @@ export const FooterHUD: React.FC = () => {
       style={{
         marginTop: 'auto',
         borderTop: '1px solid var(--border-whisper)',
-        background: 'rgba(4, 5, 7, 0.85)',
+        background: 'rgba(7, 8, 12, 0.85)',
         backdropFilter: 'blur(20px)',
         WebkitBackdropFilter: 'blur(20px)',
-        padding: '24px 32px',
+        padding: '16px 24px',
       }}
     >
       <div
         style={{
-          maxWidth: 1400,
+          maxWidth: 1360,
           margin: '0 auto',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           flexWrap: 'wrap',
-          gap: 16,
+          gap: 12,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <Shield size={16} color="var(--cyan)" />
-          <span style={{ fontSize: 13, color: 'var(--text-sub)' }}>
-            <strong>Umbra</strong> — Shielded Non-Custodial Zero-Knowledge Escrow Protocol
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Shield size={14} color="var(--cyan)" />
+          <span style={{ fontSize: '12px', color: 'var(--text-sub)' }}>
+            <strong>Umbra</strong> — Shielded Zero-Knowledge Escrow Protocol
           </span>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 6,
-              fontSize: 12,
+              gap: 5,
+              fontSize: '11px',
               fontFamily: 'var(--font-mono)',
               color: 'var(--text-faint)',
             }}
           >
-            <Key size={13} color="var(--amethyst)" />
+            <Key size={12} color="var(--amethyst)" />
             <span>Compact ZK v0.23</span>
           </div>
 
@@ -53,16 +53,15 @@ export const FooterHUD: React.FC = () => {
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 6,
-              fontSize: 12,
+              gap: 4,
+              fontSize: '11px',
               fontFamily: 'var(--font-mono)',
               color: 'var(--cyan)',
               textDecoration: 'none',
-              transition: 'opacity 0.2s',
             }}
           >
             <span>Midnight Testnet</span>
-            <ExternalLink size={12} />
+            <ExternalLink size={10} />
           </a>
         </div>
       </div>

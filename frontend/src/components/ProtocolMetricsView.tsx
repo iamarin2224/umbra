@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Activity, ShieldCheck, Cpu, Database, Zap, Layers, Server } from 'lucide-react';
+import { Cpu, Layers, Server } from 'lucide-react';
 import SpotlightCard from './SpotlightCard';
 import { EscrowStats } from '../hooks/useEscrowService';
 
@@ -13,39 +13,38 @@ export const ProtocolMetricsView: React.FC<ProtocolMetricsViewProps> = ({ stats,
   return (
     <motion.section
       key="stats"
-      initial={{ opacity: 0, y: 16 }}
+      initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -12 }}
-      transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
+      exit={{ opacity: 0, y: -8 }}
+      transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
     >
-      <div style={{ marginBottom: '32px' }}>
-        <span
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '11px',
-            color: 'var(--cyan)',
-            letterSpacing: '0.16em',
-            textTransform: 'uppercase',
-          }}
-        >
-          Prover Telemetry &amp; Enclave Benchmarks
-        </span>
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '32px', fontWeight: 700, marginTop: '6px' }}>
-          Enclave Performance Metrics
+      <div style={{ marginBottom: '20px' }}>
+        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 700, color: '#ffffff' }}>
+          Enclave Telemetry & Benchmarks
         </h2>
-        <p style={{ fontSize: '14px', color: 'var(--text-sub)', marginTop: '6px' }}>
-          Cryptographic benchmark latency, zero-knowledge test verification, and on-chain state machine telemetry.
+        <p style={{ fontSize: '13px', color: 'var(--text-sub)', marginTop: '4px' }}>
+          Zero-knowledge prover status, indexed contract distributions, and Midnight node synchronizations.
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
-        {/* Halo2 Prover Benchmark Card */}
-        <SpotlightCard className="fluid-glass-panel" spotlightColor="rgba(0, 229, 255, 0.2)">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))', gap: '16px' }}>
+        {/* Prover Status & Indexing Metrics */}
+        <SpotlightCard
+          spotlightColor="rgba(0, 240, 255, 0.12)"
+          style={{
+            background: 'rgba(13, 16, 23, 0.7)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            border: '1px solid var(--border-whisper)',
+            borderRadius: '12px',
+            padding: '20px',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Cpu size={16} color="var(--cyan)" />
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 600 }}>
-                Halo2 SNARK Prover
+              <Cpu size={15} color="var(--cyan)" />
+              <span style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>
+                Halo2 SNARK Prover Pipeline
               </span>
             </div>
             <span
@@ -53,98 +52,92 @@ export const ProtocolMetricsView: React.FC<ProtocolMetricsViewProps> = ({ stats,
                 fontFamily: 'var(--font-mono)',
                 fontSize: '10px',
                 color: isBackendOnline ? 'var(--emerald)' : 'var(--gold)',
-                background: isBackendOnline ? 'rgba(52, 211, 153, 0.1)' : 'rgba(251, 191, 36, 0.1)',
+                background: isBackendOnline ? 'rgba(52, 211, 153, 0.08)' : 'rgba(251, 191, 36, 0.08)',
                 padding: '2px 8px',
-                borderRadius: 6,
+                borderRadius: '4px',
               }}
             >
-              {isBackendOnline ? '100% ONLINE' : 'API OFFLINE'}
+              {isBackendOnline ? 'Operational' : 'Offline'}
             </span>
           </div>
 
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '16px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {[
               {
-                label: 'API Link',
-                val: isBackendOnline ? 'ONLINE' : 'DOWN',
-                pct: isBackendOnline ? '100%' : '0%',
-                color: isBackendOnline ? 'var(--emerald)' : 'var(--crimson)',
-              },
-              {
-                label: 'Escrow Instances Indexed',
+                label: 'Contracts Indexed',
                 val: stats.totalCount.toString(),
-                pct: stats.totalCount > 0 ? '100%' : '0%',
+                pct: stats.totalCount > 0 ? 100 : 0,
               },
               {
-                label: 'Settled Contracts',
-                val: stats.completedCount.toString(),
-                pct: `${stats.totalCount > 0 ? Math.round((stats.completedCount / stats.totalCount) * 100) : 0}%`,
+                label: 'Settlement Ratio',
+                val: `${stats.totalCount > 0 ? Math.round((stats.completedCount / stats.totalCount) * 100) : 0}%`,
+                pct: stats.totalCount > 0 ? Math.round((stats.completedCount / stats.totalCount) * 100) : 0,
                 color: 'var(--emerald)',
               },
               {
-                label: 'Disputed Contracts',
-                val: stats.disputedCount.toString(),
-                pct: `${stats.totalCount > 0 ? Math.round((stats.disputedCount / stats.totalCount) * 100) : 0}%`,
-                color: stats.disputedCount > 0 ? 'var(--crimson)' : 'var(--text-hero)',
+                label: 'Dispute Ratio',
+                val: `${stats.totalCount > 0 ? Math.round((stats.disputedCount / stats.totalCount) * 100) : 0}%`,
+                pct: stats.totalCount > 0 ? Math.round((stats.disputedCount / stats.totalCount) * 100) : 0,
+                color: stats.disputedCount > 0 ? 'var(--crimson)' : 'var(--text-sub)',
               },
-            ].map((meter, i) => (
+            ].map((metric, i) => (
               <div
                 key={i}
                 style={{
-                  display: 'flex',
-                  justifyContent: 'space-between',
-                  alignItems: 'center',
                   background: 'rgba(255, 255, 255, 0.02)',
-                  padding: '14px 18px',
-                  borderRadius: '12px',
                   border: '1px solid var(--border-whisper)',
+                  borderRadius: '8px',
+                  padding: '10px 14px',
                 }}
               >
-                <div>
-                  <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-sub)' }}>
-                    {meter.label}
-                  </div>
-                  <div
-                    style={{
-                      width: '130px',
-                      height: '3px',
-                      background: 'rgba(255, 255, 255, 0.08)',
-                      borderRadius: '2px',
-                      marginTop: '8px',
-                      overflow: 'hidden',
-                    }}
-                  >
-                    <div
-                      style={{
-                        height: '100%',
-                        width: meter.pct,
-                        background: 'linear-gradient(90deg, var(--cyan), var(--amethyst))',
-                      }}
-                    />
-                  </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+                  <span style={{ fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text-sub)' }}>
+                    {metric.label}
+                  </span>
+                  <span style={{ fontSize: '14px', fontFamily: 'var(--font-display)', fontWeight: 700, color: metric.color || '#ffffff' }}>
+                    {metric.val}
+                  </span>
                 </div>
                 <div
                   style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: '18px',
-                    fontWeight: 700,
-                    color: meter.color || 'var(--text-hero)',
+                    width: '100%',
+                    height: '4px',
+                    background: 'rgba(255, 255, 255, 0.06)',
+                    borderRadius: '2px',
+                    overflow: 'hidden',
                   }}
                 >
-                  {meter.val}
+                  <div
+                    style={{
+                      height: '100%',
+                      width: `${metric.pct}%`,
+                      background: 'linear-gradient(90deg, var(--cyan), var(--amethyst))',
+                      borderRadius: '2px',
+                    }}
+                  />
                 </div>
               </div>
             ))}
           </div>
         </SpotlightCard>
 
-        {/* Settlement Distribution Card */}
-        <SpotlightCard className="fluid-glass-panel" spotlightColor="rgba(192, 132, 252, 0.2)">
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+        {/* State Machine Distribution */}
+        <SpotlightCard
+          spotlightColor="rgba(192, 132, 252, 0.12)"
+          style={{
+            background: 'rgba(13, 16, 23, 0.7)',
+            backdropFilter: 'blur(20px)',
+            WebkitBackdropFilter: 'blur(20px)',
+            border: '1px solid var(--border-whisper)',
+            borderRadius: '12px',
+            padding: '20px',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Layers size={16} color="var(--amethyst)" />
-              <span style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 600 }}>
-                Settlement Distribution
+              <Layers size={15} color="var(--amethyst)" />
+              <span style={{ fontSize: '13px', fontWeight: 600, color: '#ffffff' }}>
+                Settlement State Distribution
               </span>
             </div>
             <span style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--cyan)' }}>
@@ -152,68 +145,64 @@ export const ProtocolMetricsView: React.FC<ProtocolMetricsViewProps> = ({ stats,
             </span>
           </div>
 
-          <p style={{ fontSize: '13px', color: 'var(--text-sub)', marginBottom: '20px', lineHeight: 1.6 }}>
-            Active distribution of smart contract state machine instances across Midnight Preprod:
-          </p>
-
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px', marginBottom: '16px' }}>
             {[
-              { label: 'ACTIVE', count: stats.activeCount.toString(), sub: 'Funded / Delivery', color: 'var(--gold)' },
-              { label: 'SETTLED', count: stats.completedCount.toString(), sub: 'Zero disclosure', color: 'var(--emerald)' },
-              { label: 'DISPUTED', count: stats.disputedCount.toString(), sub: 'In Arbitration', color: 'var(--crimson)' },
+              { label: 'Active', count: stats.activeCount.toString(), color: 'var(--gold)' },
+              { label: 'Settled', count: stats.completedCount.toString(), color: 'var(--emerald)' },
+              { label: 'Disputed', count: stats.disputedCount.toString(), color: 'var(--crimson)' },
             ].map((node, i) => (
               <div
                 key={i}
                 style={{
                   background: 'rgba(255, 255, 255, 0.02)',
                   border: '1px solid var(--border-whisper)',
-                  borderRadius: '12px',
-                  padding: '16px',
+                  borderRadius: '8px',
+                  padding: '12px',
                   textAlign: 'center',
                 }}
               >
-                <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: node.color }}>{node.label}</span>
+                <div style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: node.color, textTransform: 'uppercase' }}>
+                  {node.label}
+                </div>
                 <div
                   style={{
                     fontFamily: 'var(--font-display)',
-                    fontSize: '26px',
+                    fontSize: '22px',
                     fontWeight: 700,
                     color: node.color,
-                    margin: '4px 0',
+                    marginTop: '2px',
                   }}
                 >
                   {node.count}
                 </div>
-                <span style={{ fontSize: '11px', color: 'var(--text-faint)' }}>{node.sub}</span>
               </div>
             ))}
           </div>
 
-          {/* Enclave Health Box */}
+          {/* Enclave Health Footer */}
           <div
             style={{
-              marginTop: '18px',
-              padding: '14px 16px',
-              borderRadius: 12,
-              background: 'rgba(0, 0, 0, 0.3)',
+              padding: '10px 14px',
+              borderRadius: '8px',
+              background: 'rgba(0, 0, 0, 0.25)',
               border: '1px solid var(--border-whisper)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--text-sub)' }}>
-              <Server size={14} color="var(--cyan)" />
-              <span>Midnight Network API Enclave</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '11px', color: 'var(--text-sub)' }}>
+              <Server size={13} color="var(--cyan)" />
+              <span>Midnight Network Preprod Enclave</span>
             </div>
             <span
               style={{
                 fontFamily: 'var(--font-mono)',
-                fontSize: 11,
+                fontSize: '10px',
                 color: isBackendOnline ? 'var(--emerald)' : 'var(--gold)',
               }}
             >
-              {isBackendOnline ? 'Preprod Sync Active' : 'API Unreachable'}
+              {isBackendOnline ? 'Synced' : 'Connecting'}
             </span>
           </div>
         </SpotlightCard>

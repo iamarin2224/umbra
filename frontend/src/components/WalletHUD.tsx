@@ -39,27 +39,21 @@ export const WalletHUD: React.FC = () => {
 
   if (!isConnected) {
     return (
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-faint)' }}>
-          <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#64748b' }} />
-          <span>{networkId.toUpperCase()}</span>
-        </div>
-
+      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
         <button
           onClick={() => connect()}
           disabled={isConnecting}
           style={{
-            background: 'rgba(0, 240, 255, 0.12)',
-            border: '1px solid rgba(0, 240, 255, 0.35)',
+            background: 'rgba(0, 240, 255, 0.08)',
+            border: '1px solid rgba(0, 240, 255, 0.3)',
             color: 'var(--cyan)',
             fontFamily: 'var(--font-body)',
             fontSize: '12px',
-            fontWeight: 600,
-            padding: '6px 16px',
-            borderRadius: '9999px',
+            fontWeight: 500,
+            padding: '7px 14px',
+            borderRadius: '8px',
             cursor: isConnecting ? 'wait' : 'pointer',
-            transition: 'all 0.3s var(--ease-apple)',
-            boxShadow: '0 0 16px rgba(0, 240, 255, 0.15)',
+            transition: 'all 0.2s var(--ease-apple)',
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
@@ -67,31 +61,38 @@ export const WalletHUD: React.FC = () => {
         >
           {isConnecting ? (
             <>
-              <span style={{ display: 'inline-block', width: '10px', height: '10px', border: '2px solid var(--cyan)', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+              <span
+                style={{
+                  display: 'inline-block',
+                  width: '10px',
+                  height: '10px',
+                  border: '2px solid var(--cyan)',
+                  borderTopColor: 'transparent',
+                  borderRadius: '50%',
+                  animation: 'spin 1s linear infinite',
+                }}
+              />
               <span>Connecting...</span>
             </>
           ) : (
             <>
-              <Wallet size={12} />
-              <span>Connect 1am</span>
+              <Wallet size={13} />
+              <span>Connect Wallet</span>
             </>
           )}
         </button>
 
         {error && (
           <div
+            title={error}
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '6px',
-              fontFamily: 'var(--font-mono)',
-              fontSize: '10px',
               color: 'var(--crimson)',
-              maxWidth: '280px',
+              cursor: 'help',
             }}
           >
-            <AlertCircle size={11} />
-            <span>{error}</span>
+            <AlertCircle size={14} />
           </div>
         )}
       </div>
@@ -99,82 +100,131 @@ export const WalletHUD: React.FC = () => {
   }
 
   return (
-    <div ref={menuRef} style={{ position: 'relative', display: 'flex', alignItems: 'center', gap: '10px' }}>
-      {/* Network Badge */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--emerald)' }}>
-        <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: 'var(--emerald)', boxShadow: '0 0 8px var(--emerald)' }} />
-        <span>SHIELDED</span>
-      </div>
-
-      {/* Wallet Trigger Pill */}
+    <div ref={menuRef} style={{ position: 'relative' }}>
+      {/* Wallet Trigger Button */}
       <button
         onClick={() => setDropdownOpen(!dropdownOpen)}
         style={{
-          background: 'rgba(52, 211, 153, 0.12)',
-          border: '1px solid rgba(52, 211, 153, 0.35)',
-          color: 'var(--emerald)',
+          background: 'rgba(52, 211, 153, 0.08)',
+          border: '1px solid rgba(52, 211, 153, 0.25)',
+          color: '#e2e8f0',
           fontFamily: 'var(--font-mono)',
           fontSize: '12px',
           fontWeight: 500,
-          padding: '6px 14px',
-          borderRadius: '9999px',
+          padding: '6px 12px',
+          borderRadius: '8px',
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
-          transition: 'all 0.25s var(--ease-apple)',
-          boxShadow: '0 0 12px rgba(52, 211, 153, 0.12)',
+          transition: 'all 0.2s var(--ease-apple)',
         }}
       >
-        <ShieldCheck size={13} />
-        <span>{shortAddress || 'Shielded Enclave'}</span>
-        <ChevronDown size={12} style={{ transform: dropdownOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s ease' }} />
+        <span
+          style={{
+            width: '6px',
+            height: '6px',
+            borderRadius: '50%',
+            background: 'var(--emerald)',
+            boxShadow: '0 0 6px var(--emerald)',
+          }}
+        />
+        <span>{shortAddress || 'Shielded'}</span>
+        <ChevronDown
+          size={12}
+          color="var(--text-sub)"
+          style={{
+            transform: dropdownOpen ? 'rotate(180deg)' : 'none',
+            transition: 'transform 0.2s ease',
+          }}
+        />
       </button>
 
-      {/* Floating HUD Dropdown Menu */}
+      {/* Floating Dropdown Menu */}
       <AnimatePresence>
         {dropdownOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 8, scale: 0.96 }}
+            initial={{ opacity: 0, y: 6, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 6, scale: 0.96 }}
-            transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+            exit={{ opacity: 0, y: 4, scale: 0.98 }}
+            transition={{ duration: 0.15, ease: [0.16, 1, 0.3, 1] }}
             style={{
               position: 'absolute',
-              top: 'calc(100% + 8px)',
+              top: 'calc(100% + 6px)',
               right: 0,
-              width: '320px',
-              background: 'rgba(12, 14, 20, 0.92)',
-              backdropFilter: 'blur(28px) saturate(190%)',
-              WebkitBackdropFilter: 'blur(28px) saturate(190%)',
+              width: '290px',
+              background: 'rgba(11, 14, 20, 0.96)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
               border: '1px solid var(--border-sheen)',
-              borderRadius: '16px',
-              padding: '16px',
-              boxShadow: '0 24px 48px rgba(0, 0, 0, 0.6), 0 0 20px rgba(0, 240, 255, 0.08)',
+              borderRadius: '12px',
+              padding: '14px',
+              boxShadow: '0 16px 36px rgba(0, 0, 0, 0.6)',
               zIndex: 200,
             }}
           >
-            {/* Header / Network */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-whisper)', paddingBottom: '10px', marginBottom: '12px' }}>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.1em', color: 'var(--text-faint)' }}>
-                Midnight Shielded Enclave
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                marginBottom: '10px',
+              }}
+            >
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '10px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.08em',
+                  color: 'var(--text-faint)',
+                }}
+              >
+                Connected Enclave
               </span>
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--cyan)', background: 'rgba(0, 240, 255, 0.08)', padding: '2px 6px', borderRadius: '4px' }}>
+              <span
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '10px',
+                  color: 'var(--cyan)',
+                  background: 'rgba(0, 240, 255, 0.08)',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                }}
+              >
                 {networkId}
               </span>
             </div>
 
             {/* Address Display & Copy */}
-            <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-whisper)', borderRadius: '10px', padding: '10px 12px', marginBottom: '14px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <span style={{ fontSize: '11px', color: 'var(--text-faint)' }}>Unshielded Address</span>
+            <div
+              style={{
+                background: 'rgba(255, 255, 255, 0.03)',
+                border: '1px solid var(--border-whisper)',
+                borderRadius: '8px',
+                padding: '8px 10px',
+                marginBottom: '12px',
+              }}
+            >
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  marginBottom: '4px',
+                }}
+              >
+                <span style={{ fontSize: '10px', color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>
+                  Wallet Address
+                </span>
                 <button
                   onClick={() => handleCopy(address || '')}
                   style={{
                     background: 'transparent',
                     border: 'none',
                     color: copied ? 'var(--emerald)' : 'var(--cyan)',
-                    fontSize: '11px',
+                    fontSize: '10px',
+                    fontFamily: 'var(--font-mono)',
                     cursor: 'pointer',
                     display: 'flex',
                     alignItems: 'center',
@@ -185,18 +235,40 @@ export const WalletHUD: React.FC = () => {
                   <span>{copied ? 'Copied' : 'Copy'}</span>
                 </button>
               </div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-hero)', wordBreak: 'break-all' }}>
+              <div
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '11px',
+                  color: 'var(--text-hero)',
+                  wordBreak: 'break-all',
+                }}
+              >
                 {address}
               </div>
             </div>
 
-            {/* External Lace Links & Disconnect */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid var(--border-whisper)', paddingTop: '10px' }}>
+            {/* External Explorer Links & Disconnect */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                paddingTop: '8px',
+                borderTop: '1px solid var(--border-whisper)',
+              }}
+            >
               <a
                 href="https://explorer.preprod.midnight.network"
                 target="_blank"
                 rel="noreferrer"
-                style={{ fontSize: '11px', color: 'var(--text-sub)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+                style={{
+                  fontSize: '11px',
+                  color: 'var(--text-sub)',
+                  textDecoration: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                }}
               >
                 <span>Explorer</span>
                 <ExternalLink size={10} />
@@ -208,12 +280,12 @@ export const WalletHUD: React.FC = () => {
                   setDropdownOpen(false);
                 }}
                 style={{
-                  background: 'rgba(251, 113, 133, 0.12)',
-                  border: '1px solid rgba(251, 113, 133, 0.3)',
+                  background: 'rgba(251, 113, 133, 0.08)',
+                  border: '1px solid rgba(251, 113, 133, 0.25)',
                   color: 'var(--crimson)',
                   fontSize: '11px',
-                  fontWeight: 600,
-                  padding: '5px 12px',
+                  fontWeight: 500,
+                  padding: '4px 10px',
                   borderRadius: '6px',
                   cursor: 'pointer',
                   display: 'flex',

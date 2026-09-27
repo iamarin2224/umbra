@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Galaxy from './components/Galaxy';
-import SpotlightCard from './components/SpotlightCard';
 import { FluidCursor } from './components/FluidCursor';
 import { HeaderHUD, NavTab } from './components/HeaderHUD';
 import { TelemetryBar } from './components/TelemetryBar';
@@ -56,7 +55,7 @@ export function App() {
 
   return (
     <div style={{ position: 'relative', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      {/* ── React Bits Galaxy Parallax WebGL Background (Calibrated Ambient Backdrop) ── */}
+      {/* ── Ambient WebGL Galaxy Canvas ── */}
       <div
         style={{
           position: 'fixed',
@@ -72,24 +71,24 @@ export function App() {
         <Galaxy
           mouseRepulsion
           mouseInteraction
-          density={0.9}
-          glowIntensity={0.28}
-          saturation={0.35}
+          density={0.8}
+          glowIntensity={0.22}
+          saturation={0.3}
           hueShift={140}
-          twinkleIntensity={0.3}
-          rotationSpeed={0.03}
-          repulsionStrength={1.6}
+          twinkleIntensity={0.25}
+          rotationSpeed={0.02}
+          repulsionStrength={1.4}
           autoCenterRepulsion={0}
-          starSpeed={0.25}
-          speed={0.6}
+          starSpeed={0.2}
+          speed={0.5}
           transparent={false}
         />
       </div>
 
-      {/* ── Splitstellar-style Magnetic Dynamic Cursor ── */}
+      {/* ── Custom Dynamic Cursor ── */}
       <FluidCursor />
 
-      {/* ── Umbra Command Bar & Header HUD (Phase 18) ── */}
+      {/* ── Minimalist Global Navigation Bar ── */}
       <HeaderHUD
         activeTab={activeTab}
         onTabChange={setActiveTab}
@@ -100,71 +99,20 @@ export function App() {
       />
 
       {/* ── Main Workspace ── */}
-      <main style={{ flex: 1, padding: '36px 0 60px', position: 'relative', zIndex: 10 }}>
-        <div style={{ maxWidth: '1400px', width: '100%', margin: '0 auto', padding: '0 24px' }}>
+      <main style={{ flex: 1, padding: '24px 0 48px', position: 'relative', zIndex: 10 }}>
+        <div style={{ maxWidth: '1360px', width: '100%', margin: '0 auto', padding: '0 24px' }}>
 
-          {/* ── Live Pipeline Status Strip ── */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 16,
-              marginBottom: 16,
-              fontFamily: 'var(--font-mono)',
-              fontSize: 11,
-            }}
-          >
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                color: isLiveConnected ? 'var(--emerald)' : 'var(--text-faint)',
-              }}
-            >
-              <span
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: '50%',
-                  background: isLiveConnected ? 'var(--emerald)' : '#64748b',
-                  boxShadow: isLiveConnected ? '0 0 8px var(--emerald)' : 'none',
-                }}
-              />
-              {isLiveConnected ? 'REALTIME STREAM ACTIVE' : 'REALTIME STREAM OFFLINE'}
-            </span>
-            <span
-              style={{
-                display: 'inline-flex',
-                alignItems: 'center',
-                gap: 6,
-                color: isBackendOnline ? 'var(--cyan)' : 'var(--crimson)',
-              }}
-            >
-              <span
-                style={{
-                  width: 7,
-                  height: 7,
-                  borderRadius: '50%',
-                  background: isBackendOnline ? 'var(--cyan)' : 'var(--crimson)',
-                }}
-              />
-              {isBackendOnline ? 'API ONLINE' : 'API OFFLINE'}
-            </span>
-          </div>
-
-          {/* ── Error Banner (real failures only — never swallowed) ── */}
+          {/* ── Error Banner ── */}
           {error && (
             <div
               role="alert"
               style={{
-                maxWidth: 900,
-                margin: '0 auto 20px',
-                background: 'rgba(251, 113, 133, 0.1)',
-                border: '1px solid rgba(251, 113, 133, 0.35)',
-                borderRadius: 12,
-                padding: '12px 16px',
+                maxWidth: 800,
+                margin: '0 auto 16px',
+                background: 'rgba(251, 113, 133, 0.08)',
+                border: '1px solid rgba(251, 113, 133, 0.3)',
+                borderRadius: 8,
+                padding: '10px 14px',
                 color: 'var(--crimson)',
                 fontFamily: 'var(--font-mono)',
                 fontSize: 12,
@@ -175,126 +123,67 @@ export function App() {
             </div>
           )}
 
-          {/* ── Live Protocol Telemetry Metrics (Phase 18) ── */}
+          {/* ── Sleek Horizontal Telemetry Bar ── */}
           <TelemetryBar stats={stats} isBackendOnline={isBackendOnline} />
 
           <AnimatePresence mode="wait">
-            {/* ========================================================
-                 VIEW 1: COMMAND MATRIX & ESCROW CARDS (PHASE 19)
-                 ======================================================== */}
+            {/* ── VIEW 1: COMMAND MATRIX ── */}
             {activeTab === 'escrows' && (
               <motion.section
                 key="escrows"
-                initial={{ opacity: 0, y: 16 }}
+                initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -12 }}
-                transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
+                exit={{ opacity: 0, y: -8 }}
+                transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
               >
-                {/* Hero Header */}
-                <div style={{ textAlign: 'center', padding: '16px 0 32px', maxWidth: '840px', margin: '0 auto' }}>
-                  <span
-                    style={{
-                      display: 'inline-block',
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: '11px',
-                      fontWeight: 600,
-                      letterSpacing: '0.16em',
-                      textTransform: 'uppercase',
-                      color: 'var(--cyan)',
-                      marginBottom: '12px',
-                    }}
-                  >
-                    Midnight Zero-Knowledge Settlement Protocol
-                  </span>
-
-                  <h1
-                    style={{
-                      fontFamily: 'var(--font-display)',
-                      fontSize: 'clamp(2.4rem, 5vw, 3.8rem)',
-                      fontWeight: 700,
-                      lineHeight: 1.1,
-                      letterSpacing: '-0.03em',
-                      marginBottom: '16px',
-                      background: 'linear-gradient(180deg, #ffffff 40%, rgba(255, 255, 255, 0.5) 100%)',
-                      WebkitBackgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                    }}
-                  >
-                    Shielded Contracts.{' '}
-                    <span
-                      style={{
-                        background: 'linear-gradient(135deg, var(--cyan) 0%, var(--amethyst) 100%)',
-                        WebkitBackgroundClip: 'text',
-                        WebkitTextFillColor: 'transparent',
-                      }}
-                    >
-                      Verifiable Settlements.
-                    </span>
-                  </h1>
-
-                  <p
-                    style={{
-                      fontSize: '15px',
-                      color: 'var(--text-sub)',
-                      lineHeight: 1.6,
-                      maxWidth: '600px',
-                      margin: '0 auto 24px',
-                    }}
-                  >
-                    Execute private escrow agreements without exposing balances, counterparty addresses, or condition witnesses on the public ledger.
-                  </p>
-                </div>
-
-                {/* 3-Step Fluid Stepper */}
+                {/* Compact Linear Stepper Strip */}
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                    gap: '16px',
-                    marginBottom: '36px',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+                    gap: 12,
+                    marginBottom: 18,
                   }}
                 >
                   {[
-                    { num: '01', title: 'Hash Lock', desc: 'Capital committed as an uninvertible persistentHash' },
-                    { num: '02', title: 'Milestone Proof', desc: 'Private witness satisfies contract rules' },
-                    { num: '03', title: 'Shielded Settlement', desc: 'Settlement completes with zero ledger leak' },
-                  ].map((step, i) => (
-                    <SpotlightCard
-                      key={i}
-                      spotlightColor="rgba(0, 229, 255, 0.22)"
+                    { step: '01', title: 'Commitment Hash', desc: 'Capital locked as persistentHash' },
+                    { step: '02', title: 'Milestone Proof', desc: 'Off-chain witness verified via zkSNARK' },
+                    { step: '03', title: 'Shielded Settlement', desc: 'Autonomous payout with zero leak' },
+                  ].map((item, idx) => (
+                    <div
+                      key={idx}
                       style={{
-                        padding: '16px 20px',
+                        background: 'rgba(13, 16, 23, 0.5)',
+                        border: '1px solid var(--border-whisper)',
+                        borderRadius: 10,
+                        padding: '10px 14px',
                         display: 'flex',
                         alignItems: 'center',
-                        gap: '14px',
-                        borderRadius: '14px',
-                        background: 'rgba(14, 16, 24, 0.65)',
-                        border: '1px solid var(--border-whisper)',
+                        gap: 12,
                       }}
                     >
                       <span
                         style={{
                           fontFamily: 'var(--font-mono)',
-                          fontSize: '11px',
+                          fontSize: 11,
                           fontWeight: 600,
                           color: 'var(--cyan)',
                           background: 'rgba(0, 240, 255, 0.08)',
-                          border: '1px solid rgba(0, 240, 255, 0.2)',
-                          padding: '4px 8px',
-                          borderRadius: '6px',
+                          padding: '2px 6px',
+                          borderRadius: 4,
                         }}
                       >
-                        {step.num}
+                        {item.step}
                       </span>
                       <div>
-                        <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-hero)' }}>{step.title}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-sub)', marginTop: '2px' }}>{step.desc}</div>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: '#ffffff' }}>{item.title}</div>
+                        <div style={{ fontSize: 11, color: 'var(--text-sub)' }}>{item.desc}</div>
                       </div>
-                    </SpotlightCard>
+                    </div>
                   ))}
                 </div>
 
-                {/* Escrow Command Matrix (Phase 19) */}
+                {/* Escrow Matrix List & Toolbar */}
                 <EscrowMatrix
                   escrows={filteredEscrows}
                   filter={filter}
@@ -310,23 +199,17 @@ export function App() {
               </motion.section>
             )}
 
-            {/* ========================================================
-                 VIEW 2: STATS (TELEMETRY - PHASE 22 MODULAR VIEW)
-                 ======================================================== */}
+            {/* ── VIEW 2: TELEMETRY ── */}
             {activeTab === 'stats' && (
               <ProtocolMetricsView stats={stats} isBackendOnline={isBackendOnline} />
             )}
 
-            {/* ========================================================
-                 VIEW 3: EXPLORER (CIRCUITS - PHASE 22 MODULAR VIEW)
-                 ======================================================== */}
+            {/* ── VIEW 3: CIRCUIT LAB ── */}
             {activeTab === 'explorer' && (
               <ZKExplorerView />
             )}
 
-            {/* ========================================================
-                 VIEW 4: ABOUT (ARCHITECTURE SPEC - PHASE 22 MODULAR VIEW)
-                 ======================================================== */}
+            {/* ── VIEW 4: DOCS & ARCHITECTURE ── */}
             {activeTab === 'about' && (
               <AboutUmbraView />
             )}
@@ -334,7 +217,7 @@ export function App() {
         </div>
       </main>
 
-      {/* ── Escrow Deep Audit Inspector Modal (Phase 21) ── */}
+      {/* ── Modals & Drawers ── */}
       <EscrowInspectorModal
         isOpen={inspectorOpen}
         escrow={selectedEscrow}
@@ -347,7 +230,6 @@ export function App() {
         isActionLoading={actionLoading}
       />
 
-      {/* ── Create Escrow Tactical Modal (Phase 20) ── */}
       <CreateEscrowModal
         isOpen={createModalOpen}
         onClose={() => setCreateModalOpen(false)}
@@ -355,7 +237,6 @@ export function App() {
         isLoading={actionLoading}
       />
 
-      {/* ── Action / Transition Circuit Modal (Phase 20) ── */}
       <ActionModal
         isOpen={!!actionModalEscrow && !!pendingActionType}
         onClose={() => {
@@ -368,7 +249,7 @@ export function App() {
         isLoading={actionLoading}
       />
 
-      {/* ── Umbra Footer HUD (Phase 18) ── */}
+      {/* ── Minimalist Footer ── */}
       <FooterHUD />
     </div>
   );

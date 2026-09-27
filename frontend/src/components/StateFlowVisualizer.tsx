@@ -1,14 +1,10 @@
 import React from 'react';
-import { motion } from 'framer-motion';
 import {
   CheckCircle2,
   Clock,
-  ArrowRight,
-  Shield,
+  PlayCircle,
   AlertTriangle,
   XCircle,
-  PlayCircle,
-  HelpCircle,
 } from 'lucide-react';
 import { EscrowState, ESCROW_STATE_LABELS } from '../types/escrow';
 
@@ -17,38 +13,12 @@ interface StateFlowVisualizerProps {
 }
 
 export const StateFlowVisualizer: React.FC<StateFlowVisualizerProps> = ({ currentState }) => {
-  // Linear & branch representations of the Compact ZK state machine
   const nodes = [
-    {
-      state: EscrowState.Created,
-      label: 'Created',
-      circuit: 'deposit()',
-      desc: 'Enclave deployment',
-    },
-    {
-      state: EscrowState.Funded,
-      label: 'Funded',
-      circuit: 'confirmDelivery()',
-      desc: 'Capital locked',
-    },
-    {
-      state: EscrowState.Delivered,
-      label: 'Delivered',
-      circuit: 'release()',
-      desc: 'Milestone verified',
-    },
-    {
-      state: EscrowState.Released,
-      label: 'Settled',
-      circuit: 'settled',
-      desc: 'Shielded payout',
-    },
+    { state: EscrowState.Created, label: 'Created', circuit: 'deposit()' },
+    { state: EscrowState.Funded, label: 'Funded', circuit: 'confirmDelivery()' },
+    { state: EscrowState.Delivered, label: 'Delivered', circuit: 'release()' },
+    { state: EscrowState.Released, label: 'Settled', circuit: 'settled' },
   ];
-
-  const isTerminal =
-    currentState === EscrowState.Released ||
-    currentState === EscrowState.Resolved ||
-    currentState === EscrowState.Cancelled;
 
   const isDisputed = currentState === EscrowState.Disputed;
   const isResolved = currentState === EscrowState.Resolved;
@@ -57,35 +27,29 @@ export const StateFlowVisualizer: React.FC<StateFlowVisualizerProps> = ({ curren
   return (
     <div
       style={{
-        background: 'rgba(8, 10, 16, 0.65)',
+        background: 'rgba(8, 10, 16, 0.6)',
         border: '1px solid var(--border-whisper)',
-        borderRadius: 14,
-        padding: '20px 24px',
+        borderRadius: 10,
+        padding: '14px 16px',
         display: 'flex',
         flexDirection: 'column',
-        gap: 16,
+        gap: 12,
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <span
           style={{
             fontFamily: 'var(--font-mono)',
-            fontSize: 11,
+            fontSize: '10px',
             color: 'var(--cyan)',
-            letterSpacing: '0.1em',
+            letterSpacing: '0.08em',
             textTransform: 'uppercase',
           }}
         >
-          Zero-Knowledge State Machine Path
+          State Machine Progression
         </span>
-        <span
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: 11,
-            color: 'var(--text-faint)',
-          }}
-        >
-          Current Node: <strong style={{ color: 'var(--text-hero)' }}>{ESCROW_STATE_LABELS[currentState]}</strong>
+        <span style={{ fontFamily: 'var(--font-mono)', fontSize: '10px', color: 'var(--text-faint)' }}>
+          Current: <strong style={{ color: '#ffffff' }}>{ESCROW_STATE_LABELS[currentState]}</strong>
         </span>
       </div>
 
@@ -94,11 +58,10 @@ export const StateFlowVisualizer: React.FC<StateFlowVisualizerProps> = ({ curren
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(4, 1fr)',
-          gap: 12,
-          position: 'relative',
+          gap: 8,
         }}
       >
-        {nodes.map((node, idx) => {
+        {nodes.map((node) => {
           const isPassed = !isDisputed && !isCancelled && currentState > node.state;
           const isCurrent = currentState === node.state;
           const isUpcoming = currentState < node.state;
@@ -107,30 +70,29 @@ export const StateFlowVisualizer: React.FC<StateFlowVisualizerProps> = ({ curren
             <div
               key={node.state}
               style={{
-                position: 'relative',
                 background: isCurrent
-                  ? 'rgba(0, 240, 255, 0.1)'
+                  ? 'rgba(0, 240, 255, 0.08)'
                   : isPassed
-                  ? 'rgba(52, 211, 153, 0.06)'
+                  ? 'rgba(52, 211, 153, 0.05)'
                   : 'rgba(255, 255, 255, 0.02)',
                 border: isCurrent
-                  ? '1px solid rgba(0, 240, 255, 0.4)'
+                  ? '1px solid rgba(0, 240, 255, 0.35)'
                   : isPassed
-                  ? '1px solid rgba(52, 211, 153, 0.25)'
+                  ? '1px solid rgba(52, 211, 153, 0.2)'
                   : '1px solid var(--border-whisper)',
-                borderRadius: 10,
-                padding: '12px 14px',
-                transition: 'all 0.3s ease',
+                borderRadius: 8,
+                padding: '8px 10px',
+                transition: 'all 0.2s ease',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
-                {isPassed && <CheckCircle2 size={13} color="var(--emerald)" />}
-                {isCurrent && <PlayCircle size={13} color="var(--cyan)" className="animate-pulse" />}
-                {isUpcoming && <Clock size={13} color="var(--text-faint)" />}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                {isPassed && <CheckCircle2 size={12} color="var(--emerald)" />}
+                {isCurrent && <PlayCircle size={12} color="var(--cyan)" />}
+                {isUpcoming && <Clock size={12} color="var(--text-faint)" />}
                 <span
                   style={{
                     fontFamily: 'var(--font-mono)',
-                    fontSize: 12,
+                    fontSize: '11px',
                     fontWeight: 600,
                     color: isCurrent ? 'var(--cyan)' : isPassed ? 'var(--emerald)' : 'var(--text-faint)',
                   }}
@@ -138,25 +100,6 @@ export const StateFlowVisualizer: React.FC<StateFlowVisualizerProps> = ({ curren
                   {node.label}
                 </span>
               </div>
-
-              <div style={{ fontSize: 11, color: 'var(--text-sub)' }}>{node.desc}</div>
-
-              {node.circuit !== 'settled' && (
-                <div
-                  style={{
-                    marginTop: 6,
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 9,
-                    color: 'var(--text-faint)',
-                    background: 'rgba(0, 0, 0, 0.3)',
-                    padding: '2px 4px',
-                    borderRadius: 4,
-                    display: 'inline-block',
-                  }}
-                >
-                  &rarr; {node.circuit}
-                </div>
-              )}
             </div>
           );
         })}
@@ -167,44 +110,28 @@ export const StateFlowVisualizer: React.FC<StateFlowVisualizerProps> = ({ curren
         <div
           style={{
             background: isDisputed
-              ? 'rgba(251, 113, 133, 0.1)'
+              ? 'rgba(251, 113, 133, 0.08)'
               : isCancelled
-              ? 'rgba(255, 255, 255, 0.04)'
-              : 'rgba(52, 211, 153, 0.1)',
+              ? 'rgba(255, 255, 255, 0.03)'
+              : 'rgba(52, 211, 153, 0.08)',
             border: isDisputed
-              ? '1px solid rgba(251, 113, 133, 0.3)'
+              ? '1px solid rgba(251, 113, 133, 0.25)'
               : isCancelled
               ? '1px solid var(--border-whisper)'
-              : '1px solid rgba(52, 211, 153, 0.3)',
-            borderRadius: 10,
-            padding: '12px 16px',
+              : '1px solid rgba(52, 211, 153, 0.25)',
+            borderRadius: 8,
+            padding: '8px 12px',
             display: 'flex',
             alignItems: 'center',
-            gap: 12,
+            gap: 8,
           }}
         >
-          {isDisputed && <AlertTriangle size={18} color="var(--crimson)" />}
-          {isResolved && <CheckCircle2 size={18} color="var(--emerald)" />}
-          {isCancelled && <XCircle size={18} color="var(--text-faint)" />}
+          {isDisputed && <AlertTriangle size={14} color="var(--crimson)" />}
+          {isResolved && <CheckCircle2 size={14} color="var(--emerald)" />}
+          {isCancelled && <XCircle size={14} color="var(--text-faint)" />}
 
-          <div>
-            <div
-              style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: 12,
-                fontWeight: 600,
-                color: isDisputed ? 'var(--crimson)' : isResolved ? 'var(--emerald)' : 'var(--text-faint)',
-              }}
-            >
-              Branch: {isDisputed ? 'Dispute Arbitration Branch' : isResolved ? 'Resolved Branch' : 'Cancelled Agreement'}
-            </div>
-            <div style={{ fontSize: 11, color: 'var(--text-sub)', marginTop: 2 }}>
-              {isDisputed
-                ? 'Contract entered dispute circuit. Arbiter signature required for settlement.'
-                : isResolved
-                ? 'Arbiter resolve() circuit executed. Final funds redistributed.'
-                : 'Agreement cancelled prior to deposit funding.'}
-            </div>
+          <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: isDisputed ? 'var(--crimson)' : isResolved ? 'var(--emerald)' : 'var(--text-sub)' }}>
+            Branch: {isDisputed ? 'Arbitration in Progress' : isResolved ? 'Arbiter Resolution Complete' : 'Contract Cancelled'}
           </div>
         </div>
       )}

@@ -5,8 +5,8 @@ import {
   Activity,
   Layers,
   Cpu,
-  Info,
-  Terminal,
+  BookOpen,
+  Plus,
   RefreshCw,
 } from 'lucide-react';
 import { WalletHUD } from './WalletHUD';
@@ -31,10 +31,10 @@ export const HeaderHUD: React.FC<HeaderHUDProps> = ({
   onCreateClick,
 }) => {
   const tabs: Array<{ id: NavTab; label: string; icon: React.ReactNode }> = [
-    { id: 'escrows', label: 'Command Matrix', icon: <Layers size={14} /> },
-    { id: 'stats', label: 'Telemetry', icon: <Activity size={14} /> },
-    { id: 'explorer', label: 'ZK Circuit Lab', icon: <Cpu size={14} /> },
-    { id: 'about', label: 'Protocol Docs', icon: <Info size={14} /> },
+    { id: 'escrows', label: 'Command Matrix', icon: <Layers size={13} /> },
+    { id: 'stats', label: 'Telemetry', icon: <Activity size={13} /> },
+    { id: 'explorer', label: 'Circuit Lab', icon: <Cpu size={13} /> },
+    { id: 'about', label: 'Docs', icon: <BookOpen size={13} /> },
   ];
 
   return (
@@ -43,137 +43,100 @@ export const HeaderHUD: React.FC<HeaderHUDProps> = ({
         position: 'sticky',
         top: 0,
         zIndex: 50,
-        padding: '16px 24px',
-        backdropFilter: 'blur(28px) saturate(180%)',
-        WebkitBackdropFilter: 'blur(28px) saturate(180%)',
-        background: 'rgba(4, 5, 7, 0.72)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+        padding: '12px 24px',
+        backdropFilter: 'blur(20px) saturate(180%)',
+        WebkitBackdropFilter: 'blur(20px) saturate(180%)',
+        background: 'rgba(7, 8, 12, 0.82)',
+        borderBottom: '1px solid var(--border-whisper)',
       }}
     >
       <div
         style={{
-          maxWidth: 1400,
+          maxWidth: 1360,
           margin: '0 auto',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 16,
-          flexWrap: 'wrap',
         }}
       >
-        {/* Brand & Network Pill */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        {/* Left: Brand + Health Status */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
           <div
+            onClick={() => onTabChange('escrows')}
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 10,
+              gap: 9,
               cursor: 'pointer',
+              userSelect: 'none',
             }}
-            onClick={() => onTabChange('escrows')}
           >
             <div
               style={{
-                width: 38,
-                height: 38,
-                borderRadius: 12,
-                background: 'linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(192, 132, 252, 0.2))',
-                border: '1px solid rgba(0, 240, 255, 0.4)',
+                width: 30,
+                height: 30,
+                borderRadius: 8,
+                background: 'linear-gradient(135deg, rgba(0, 240, 255, 0.15), rgba(192, 132, 252, 0.15))',
+                border: '1px solid rgba(0, 240, 255, 0.3)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: '0 0 20px rgba(0, 240, 255, 0.2)',
               }}
             >
-              <Shield size={20} color="#00f0ff" />
+              <Shield size={16} color="#00f0ff" />
             </div>
-            <div>
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 8,
-                }}
-              >
-                <span
-                  style={{
-                    fontFamily: 'var(--font-display)',
-                    fontSize: 20,
-                    fontWeight: 700,
-                    letterSpacing: '-0.02em',
-                    background: 'linear-gradient(135deg, #ffffff 40%, rgba(255, 255, 255, 0.6))',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                  }}
-                >
-                  UMBRA
-                </span>
-                <span
-                  style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 10,
-                    padding: '2px 6px',
-                    borderRadius: 6,
-                    background: 'rgba(0, 240, 255, 0.1)',
-                    border: '1px solid rgba(0, 240, 255, 0.25)',
-                    color: 'var(--cyan)',
-                    letterSpacing: '0.05em',
-                  }}
-                >
-                  ZK-ESCROW
-                </span>
-              </div>
-              <div
-                style={{
-                  fontSize: 11,
-                  fontFamily: 'var(--font-mono)',
-                  color: 'var(--text-faint)',
-                  marginTop: -2,
-                }}
-              >
-                Midnight Shielded Enclave
-              </div>
-            </div>
+            <span
+              style={{
+                fontFamily: 'var(--font-display)',
+                fontSize: 16,
+                fontWeight: 700,
+                letterSpacing: '-0.02em',
+                color: '#ffffff',
+              }}
+            >
+              UMBRA
+            </span>
           </div>
 
-          {/* Online Network Pill */}
+          {/* Compact Single Health Indicator */}
           <div
+            title={isBackendOnline ? 'Protocol API Synced & Operational' : 'Protocol API Offline'}
             style={{
-              display: 'flex',
+              display: 'inline-flex',
               alignItems: 'center',
-              gap: 6,
-              padding: '4px 10px',
-              borderRadius: 20,
-              background: 'rgba(255, 255, 255, 0.03)',
-              border: '1px solid var(--border-whisper)',
+              gap: 5,
+              padding: '3px 8px',
+              borderRadius: '9999px',
+              background: isBackendOnline ? 'rgba(52, 211, 153, 0.08)' : 'rgba(251, 113, 133, 0.08)',
+              border: `1px solid ${isBackendOnline ? 'rgba(52, 211, 153, 0.2)' : 'rgba(251, 113, 133, 0.2)'}`,
               fontSize: 11,
               fontFamily: 'var(--font-mono)',
+              color: isBackendOnline ? 'var(--emerald)' : 'var(--crimson)',
             }}
           >
             <span
               style={{
-                width: 6,
-                height: 6,
+                width: 5,
+                height: 5,
                 borderRadius: '50%',
-                background: isBackendOnline ? 'var(--emerald)' : 'var(--gold)',
-                boxShadow: isBackendOnline ? '0 0 8px var(--emerald)' : '0 0 8px var(--gold)',
+                background: isBackendOnline ? 'var(--emerald)' : 'var(--crimson)',
+                boxShadow: isBackendOnline ? '0 0 6px var(--emerald)' : 'none',
               }}
             />
-            <span style={{ color: isBackendOnline ? '#e2e8f0' : 'var(--gold)' }}>
-              {isBackendOnline ? 'API Synced' : 'API Offline'}
-            </span>
+            <span>{isBackendOnline ? 'Synced' : 'Offline'}</span>
           </div>
         </div>
 
-        {/* Tactical Nav Tabs */}
+        {/* Center: Sleek Segmented Pill Tabs */}
         <nav
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 4,
-            background: 'rgba(14, 16, 24, 0.7)',
-            padding: '4px',
-            borderRadius: 14,
+            gap: 2,
+            background: 'rgba(255, 255, 255, 0.03)',
+            padding: '3px',
+            borderRadius: 10,
             border: '1px solid var(--border-whisper)',
           }}
         >
@@ -187,17 +150,17 @@ export const HeaderHUD: React.FC<HeaderHUDProps> = ({
                   position: 'relative',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 8,
-                  padding: '8px 16px',
-                  borderRadius: 10,
+                  gap: 6,
+                  padding: '6px 14px',
+                  borderRadius: 7,
                   border: 'none',
                   background: 'transparent',
                   color: isActive ? '#ffffff' : 'var(--text-sub)',
                   fontFamily: 'var(--font-body)',
                   fontSize: 13,
-                  fontWeight: isActive ? 600 : 500,
+                  fontWeight: isActive ? 600 : 450,
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'color 0.15s ease',
                   zIndex: 1,
                 }}
               >
@@ -209,13 +172,13 @@ export const HeaderHUD: React.FC<HeaderHUDProps> = ({
                     style={{
                       position: 'absolute',
                       inset: 0,
-                      borderRadius: 10,
+                      borderRadius: 7,
                       background: 'rgba(255, 255, 255, 0.08)',
-                      border: '1px solid rgba(0, 240, 255, 0.3)',
-                      boxShadow: '0 0 15px rgba(0, 240, 255, 0.1)',
+                      border: '1px solid rgba(255, 255, 255, 0.12)',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.25)',
                       zIndex: -1,
                     }}
-                    transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                    transition={{ type: 'spring', stiffness: 450, damping: 35 }}
                   />
                 )}
               </button>
@@ -223,30 +186,45 @@ export const HeaderHUD: React.FC<HeaderHUDProps> = ({
           })}
         </nav>
 
-        {/* Right Actions: Refresh, Deploy Escrow, Wallet HUD */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+        {/* Right Action Cluster: Network Pill, Refresh, Deploy CTA, Wallet */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          {/* Subtle Network Badge */}
+          <div
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 11,
+              color: 'var(--text-faint)',
+              padding: '4px 8px',
+              borderRadius: 6,
+              background: 'rgba(255, 255, 255, 0.02)',
+              border: '1px solid var(--border-whisper)',
+              letterSpacing: '0.04em',
+            }}
+          >
+            Midnight Preprod
+          </div>
+
           {onRefresh && (
             <button
               onClick={onRefresh}
               disabled={refreshing}
               title="Refresh on-chain state"
               style={{
-                width: 36,
-                height: 36,
-                borderRadius: 10,
-                background: 'rgba(14, 16, 24, 0.6)',
+                width: 32,
+                height: 32,
+                borderRadius: 8,
+                background: 'rgba(255, 255, 255, 0.03)',
                 border: '1px solid var(--border-whisper)',
                 color: 'var(--text-sub)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 cursor: refreshing ? 'not-allowed' : 'pointer',
-                transition: 'all 0.2s ease',
+                transition: 'all 0.15s ease',
               }}
             >
               <RefreshCw
-                size={15}
-                className={refreshing ? 'animate-spin' : ''}
+                size={13}
                 style={{
                   transition: 'transform 0.5s ease',
                   transform: refreshing ? 'rotate(180deg)' : 'none',
@@ -263,20 +241,20 @@ export const HeaderHUD: React.FC<HeaderHUDProps> = ({
               style={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 8,
-                padding: '9px 18px',
-                borderRadius: 10,
-                background: 'linear-gradient(135deg, #00f0ff 0%, #0099ff 100%)',
-                color: '#000000',
+                gap: 6,
+                padding: '6px 14px',
+                borderRadius: 8,
+                background: 'linear-gradient(135deg, #00f0ff 0%, #00b4d8 100%)',
+                color: '#07080c',
                 border: 'none',
                 fontFamily: 'var(--font-body)',
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: 600,
-                boxShadow: '0 0 20px rgba(0, 240, 255, 0.3)',
+                boxShadow: '0 0 14px rgba(0, 240, 255, 0.25)',
                 cursor: 'pointer',
               }}
             >
-              <Terminal size={15} />
+              <Plus size={14} strokeWidth={2.5} />
               <span>Deploy Escrow</span>
             </motion.button>
           )}

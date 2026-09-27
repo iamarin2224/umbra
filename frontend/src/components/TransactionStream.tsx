@@ -1,6 +1,6 @@
 import React from 'react';
-import { ShieldCheck, Clock, ExternalLink, Activity, ArrowUpRight } from 'lucide-react';
-import { EscrowTimelineEvent, ESCROW_STATE_LABELS } from '../types/escrow';
+import { Activity, ArrowUpRight } from 'lucide-react';
+import { EscrowTimelineEvent } from '../types/escrow';
 
 interface TransactionStreamProps {
   events: EscrowTimelineEvent[];
@@ -14,13 +14,13 @@ export const TransactionStream: React.FC<TransactionStreamProps> = ({ events, es
     return (
       <div
         style={{
-          padding: '24px',
+          padding: '20px',
           textAlign: 'center',
           fontFamily: 'var(--font-mono)',
-          fontSize: 12,
+          fontSize: '11px',
           color: 'var(--text-faint)',
           background: 'rgba(255, 255, 255, 0.02)',
-          borderRadius: 10,
+          borderRadius: 8,
           border: '1px solid var(--border-whisper)',
         }}
       >
@@ -30,58 +30,45 @@ export const TransactionStream: React.FC<TransactionStreamProps> = ({ events, es
   }
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
       {displayEvents.map((evt) => (
         <div
           key={evt.id}
           style={{
             background: 'rgba(255, 255, 255, 0.02)',
             border: '1px solid var(--border-whisper)',
-            borderRadius: 10,
-            padding: '12px 16px',
+            borderRadius: 8,
+            padding: '10px 14px',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
             gap: 12,
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div
-              style={{
-                width: 28,
-                height: 28,
-                borderRadius: 8,
-                background: 'rgba(0, 240, 255, 0.1)',
-                border: '1px solid rgba(0, 240, 255, 0.25)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Activity size={14} color="var(--cyan)" />
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Activity size={13} color="var(--cyan)" />
             <div>
-              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-hero)' }}>
+              <div style={{ fontSize: '12px', fontWeight: 500, color: '#ffffff' }}>
                 {evt.description}
               </div>
               <div
                 style={{
                   fontFamily: 'var(--font-mono)',
-                  fontSize: 10,
+                  fontSize: '10px',
                   color: 'var(--text-faint)',
-                  marginTop: 2,
+                  marginTop: 1,
                 }}
               >
-                Tx: {evt.transactionHash.slice(0, 16)}...{evt.transactionHash.slice(-8)}
+                Tx: {evt.transactionHash.slice(0, 12)}...{evt.transactionHash.slice(-6)}
               </div>
             </div>
           </div>
 
-          <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 4 }}>
+          <div style={{ textAlign: 'right', display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 2 }}>
             <span
               style={{
                 fontFamily: 'var(--font-mono)',
-                fontSize: 10,
+                fontSize: '10px',
                 color: 'var(--text-faint)',
               }}
             >
@@ -94,15 +81,15 @@ export const TransactionStream: React.FC<TransactionStreamProps> = ({ events, es
               style={{
                 display: 'inline-flex',
                 alignItems: 'center',
-                gap: 4,
+                gap: 3,
                 fontFamily: 'var(--font-mono)',
-                fontSize: 10,
+                fontSize: '10px',
                 color: 'var(--cyan)',
                 textDecoration: 'none',
               }}
             >
-              <span>Midnight Explorer</span>
-              <ArrowUpRight size={10} />
+              <span>Explorer</span>
+              <ArrowUpRight size={9} />
             </a>
           </div>
         </div>

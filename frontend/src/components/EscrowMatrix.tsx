@@ -2,10 +2,8 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Search,
-  Filter,
-  Layers,
   Inbox,
-  Sparkles,
+  Plus,
 } from 'lucide-react';
 import { EscrowRecord, EscrowState, EscrowFilter, EscrowActionType } from '../types/escrow';
 import { EscrowCard } from './EscrowCard';
@@ -29,8 +27,8 @@ export const EscrowMatrix: React.FC<EscrowMatrixProps> = ({
   isActionLoading = false,
   onCreateClick,
 }) => {
-  const filterOptions: Array<{ id: EscrowState | 'all'; label: string; count?: number }> = [
-    { id: 'all', label: 'All Agreements' },
+  const filterOptions: Array<{ id: EscrowState | 'all'; label: string }> = [
+    { id: 'all', label: 'All' },
     { id: EscrowState.Created, label: 'Created' },
     { id: EscrowState.Funded, label: 'Funded' },
     { id: EscrowState.Delivered, label: 'Delivered' },
@@ -39,21 +37,21 @@ export const EscrowMatrix: React.FC<EscrowMatrixProps> = ({
   ];
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-      {/* Search & Filter Bar */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+      {/* Cohesive Full-Width Toolbar */}
       <div
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: 16,
+          gap: 12,
           flexWrap: 'wrap',
-          background: 'rgba(14, 16, 24, 0.65)',
+          background: 'rgba(13, 16, 23, 0.65)',
           backdropFilter: 'blur(20px)',
           WebkitBackdropFilter: 'blur(20px)',
           border: '1px solid var(--border-whisper)',
-          borderRadius: 16,
-          padding: '12px 18px',
+          borderRadius: 12,
+          padding: '8px 12px',
         }}
       >
         {/* Search Input */}
@@ -61,36 +59,36 @@ export const EscrowMatrix: React.FC<EscrowMatrixProps> = ({
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 10,
+            gap: 8,
             background: 'rgba(255, 255, 255, 0.03)',
             border: '1px solid var(--border-whisper)',
-            borderRadius: 10,
-            padding: '8px 14px',
-            minWidth: 260,
-            flex: '1 1 260px',
-            maxWidth: 400,
+            borderRadius: 8,
+            padding: '6px 12px',
+            minWidth: 240,
+            flex: '1 1 240px',
+            maxWidth: 360,
           }}
         >
-          <Search size={16} color="var(--text-faint)" />
+          <Search size={14} color="var(--text-faint)" />
           <input
             type="text"
-            placeholder="Search by ID, contract hash, condition..."
+            placeholder="Filter by ID, address, condition..."
             value={filter.searchQuery || ''}
             onChange={(e) => onFilterChange({ ...filter, searchQuery: e.target.value })}
             style={{
               background: 'transparent',
               border: 'none',
               outline: 'none',
-              color: 'var(--text-hero)',
+              color: '#ffffff',
               fontFamily: 'var(--font-body)',
-              fontSize: 13,
+              fontSize: 12,
               width: '100%',
             }}
           />
         </div>
 
         {/* State Filter Buttons */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 4, flexWrap: 'wrap' }}>
           {filterOptions.map((opt) => {
             const isSelected = (filter.state ?? 'all') === opt.id;
             return (
@@ -98,16 +96,16 @@ export const EscrowMatrix: React.FC<EscrowMatrixProps> = ({
                 key={String(opt.id)}
                 onClick={() => onFilterChange({ ...filter, state: opt.id })}
                 style={{
-                  padding: '6px 14px',
-                  borderRadius: 8,
-                  border: isSelected ? '1px solid rgba(0, 240, 255, 0.4)' : '1px solid var(--border-whisper)',
-                  background: isSelected ? 'rgba(0, 240, 255, 0.12)' : 'rgba(255, 255, 255, 0.02)',
+                  padding: '5px 12px',
+                  borderRadius: 6,
+                  border: isSelected ? '1px solid rgba(0, 240, 255, 0.35)' : '1px solid transparent',
+                  background: isSelected ? 'rgba(0, 240, 255, 0.08)' : 'transparent',
                   color: isSelected ? 'var(--cyan)' : 'var(--text-sub)',
                   fontFamily: 'var(--font-mono)',
-                  fontSize: 12,
+                  fontSize: 11,
                   fontWeight: isSelected ? 600 : 400,
                   cursor: 'pointer',
-                  transition: 'all 0.2s ease',
+                  transition: 'all 0.15s ease',
                 }}
               >
                 {opt.label}
@@ -123,8 +121,8 @@ export const EscrowMatrix: React.FC<EscrowMatrixProps> = ({
           layout
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))',
-            gap: 20,
+            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+            gap: 16,
           }}
         >
           <AnimatePresence>
@@ -132,10 +130,10 @@ export const EscrowMatrix: React.FC<EscrowMatrixProps> = ({
               <motion.div
                 key={escrow.id}
                 layout
-                initial={{ opacity: 0, scale: 0.95 }}
+                initial={{ opacity: 0, scale: 0.98 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.95 }}
-                transition={{ duration: 0.25 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                transition={{ duration: 0.2 }}
               >
                 <EscrowCard
                   escrow={escrow}
@@ -151,22 +149,22 @@ export const EscrowMatrix: React.FC<EscrowMatrixProps> = ({
         /* Empty State */
         <div
           style={{
-            padding: '64px 32px',
+            padding: '56px 24px',
             textAlign: 'center',
-            background: 'rgba(14, 16, 24, 0.4)',
+            background: 'rgba(13, 16, 23, 0.4)',
             border: '1px dashed var(--border-whisper)',
-            borderRadius: 18,
+            borderRadius: 12,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
-            gap: 16,
+            gap: 14,
           }}
         >
           <div
             style={{
-              width: 54,
-              height: 54,
-              borderRadius: 16,
+              width: 44,
+              height: 44,
+              borderRadius: 10,
               background: 'rgba(255, 255, 255, 0.03)',
               border: '1px solid var(--border-whisper)',
               display: 'flex',
@@ -174,33 +172,36 @@ export const EscrowMatrix: React.FC<EscrowMatrixProps> = ({
               justifyContent: 'center',
             }}
           >
-            <Inbox size={24} color="var(--text-faint)" />
+            <Inbox size={20} color="var(--text-faint)" />
           </div>
           <div>
-            <h4 style={{ fontSize: 16, fontFamily: 'var(--font-display)', color: 'var(--text-hero)' }}>
+            <h4 style={{ fontSize: 14, fontFamily: 'var(--font-display)', fontWeight: 600, color: '#ffffff' }}>
               No Escrow Contracts Found
             </h4>
-            <p style={{ fontSize: 13, color: 'var(--text-sub)', marginTop: 4, maxWidth: 400 }}>
-              No zero-knowledge escrow agreements match the selected status or query. Deploy a new contract to initialize
-              the state machine.
+            <p style={{ fontSize: 12, color: 'var(--text-sub)', marginTop: 4, maxWidth: 360 }}>
+              No contracts match the active filter. Deploy a new shielded agreement to initiate on-chain settlement.
             </p>
           </div>
           {onCreateClick && (
             <button
               onClick={onCreateClick}
               style={{
-                padding: '8px 18px',
-                borderRadius: 10,
-                background: 'linear-gradient(135deg, #00f0ff, #0099ff)',
-                color: '#000000',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                padding: '7px 16px',
+                borderRadius: 8,
+                background: 'linear-gradient(135deg, #00f0ff, #00b4d8)',
+                color: '#07080c',
                 border: 'none',
                 fontFamily: 'var(--font-body)',
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: 600,
                 cursor: 'pointer',
               }}
             >
-              Deploy First Escrow
+              <Plus size={14} />
+              <span>Deploy Escrow</span>
             </button>
           )}
         </div>
