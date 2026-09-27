@@ -74,6 +74,7 @@ export type EscrowActionType =
 
 export interface EscrowActionRequest {
   action: EscrowActionType;
+  secret: string;
   value?: string;
   sellerPubKey?: string;
   coinIndex?: string;
@@ -86,6 +87,7 @@ export interface EscrowActionResult {
   newState: EscrowState;
   newStateLabel: string;
   error?: string;
+  warning?: string;
 }
 
 export interface EscrowDeploymentResult {
@@ -139,4 +141,17 @@ export interface EscrowTimelineEvent {
   transactionHash: string;
   timestamp: string;
   description: string;
+}
+
+/** Raw event row from the backend escrow_events table (realtime stream). */
+export interface EscrowServerEvent {
+  id?: number;
+  escrowId: string;
+  action: EscrowActionType | 'created';
+  fromState: EscrowState | null;
+  toState: EscrowState;
+  transactionHash: string;
+  blockHeight?: number | null;
+  description: string;
+  createdAt?: string;
 }

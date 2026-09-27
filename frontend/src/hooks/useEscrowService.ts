@@ -1,7 +1,8 @@
 /**
  * Umbra Escrow State Management Hook
- * Connects frontend views to backend Express API, Supabase real-time triggers, and optimistic client cache.
- * Provides complete lifecycle actions: create, deposit, confirm delivery, release, dispute, resolve, and cancel.
+ * Connects frontend views to the backend Express API, the Supabase realtime
+ * event stream, and the Midnight wallet. All escrow rows and timeline events
+ * come from live data sources — nothing is cached or synthesized locally.
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -18,11 +19,14 @@ import {
 } from '../types/escrow';
 import {
   fetchEscrows,
+  fetchEvents,
   createEscrow as apiCreateEscrow,
   performEscrowAction as apiPerformEscrowAction,
   fetchHealth,
   fetchWalletCoins,
+  fetchWalletPublicKey,
 } from '../lib/api';
+import { subscribeToLiveUpdates, isSupabaseConfigured } from '../lib/supabase';
 import { useMidnightWallet } from '../context/MidnightWalletContext';
 
 export interface EscrowStats {
@@ -42,14 +46,15 @@ export interface UseEscrowServiceReturn {
   selectedEscrow: EscrowRecord | null;
   coins: WalletCoin[];
   filter: EscrowFilter;
-  
+
   // Loading & Diagnostics
   loading: boolean;
   actionLoading: boolean;
   refreshing: boolean;
   error: string | null;
   isBackendOnline: boolean;
-  
+  isLiveConnected: boolean;
+
   // Operations & Setters
   setFilter: React.Dispatch<React.SetStateAction<EscrowFilter>>;
   setSelectedEscrow: (escrow: EscrowRecord | null) => void;
@@ -62,19 +67,12 @@ export interface UseEscrowServiceReturn {
   ) => Promise<EscrowActionResult>;
 }
 
-const EVENTS_CACHE_KEY = 'umbra_escrow_events_cache';
+const SELLER_ONLY_ACTIONS: ReadonlySet<EscrowActionType> = new Set(['confirmDelivery', 'resolve']);
 
 export function useEscrowService(): UseEscrowServiceReturn {
   const { address } = useMidnightWallet();
   const [escrows, setEscrows] = useState<EscrowRecord[]>([]);
-  const [events, setEvents] = useState<EscrowTimelineEvent[]>(() => {
-    try {
-      const stored = localStorage.getItem(EVENTS_CACHE_KEY);
-      return stored ? JSON.parse(stored) : [];
-    } catch {
-      return [];
-    }
-  });
+  const [events, setEvents] = useState<EscrowTimelineEvent[]>([]);
   const [filter, setFilter] = useState<EscrowFilter>({ state: 'all' });
   const [selectedEscrow, setSelectedEscrow] = useState<EscrowRecord | null>(null);
   const [coins, setCoins] = useState<WalletCoin[]>([]);
@@ -83,40 +81,28 @@ export function useEscrowService(): UseEscrowServiceReturn {
   const [actionLoading, setActionLoading] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
   const [isBackendOnline, setIsBackendOnline] = useState<boolean>(false);
+  const [isLiveConnected, setIsLiveConnected] = useState<boolean>(false);
 
   const initialLoadRef = useRef<boolean>(false);
+  const escrowsRef = useRef<EscrowRecord[]>([]);
+  escrowsRef.current = escrows;
 
-  // ─── Save Events helper ──────────────────────────────────────────────────
-  const recordEvent = useCallback((event: EscrowTimelineEvent) => {
-    setEvents((prev) => {
-      const next = [event, ...prev].slice(0, 50); // Keep last 50 events
-      try {
-        localStorage.setItem(EVENTS_CACHE_KEY, JSON.stringify(next));
-      } catch {
-        // storage quota fallback
-      }
-      return next;
-    });
-  }, []);
-
-  // ─── Fetch All Data ──────────────────────────────────────────────────────
+  // ─── Full data load from live sources ────────────────────────────────────
   const loadData = useCallback(async (isSilent = false) => {
     if (!isSilent) setLoading(true);
     else setRefreshing(true);
     setError(null);
 
     try {
-      // 1. Ping Health
       const health = await fetchHealth();
       setIsBackendOnline(health.ok);
 
-      // 2. Fetch Escrows
-      const data = await fetchEscrows();
-      setEscrows(data);
-
-      // 3. Fetch Wallet Coins
-      const walletCoins = await fetchWalletCoins();
-      setCoins(walletCoins);
+      const [escrowRows, timelineEvents] = await Promise.all([
+        fetchEscrows(),
+        fetchEvents(),
+      ]);
+      setEscrows(escrowRows);
+      setEvents(timelineEvents);
     } catch (err: unknown) {
       console.error('[useEscrowService] Load failed:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch escrow data');
@@ -133,13 +119,77 @@ export function useEscrowService(): UseEscrowServiceReturn {
     }
   }, [loadData]);
 
-  // Polling for live status every 15s
+  // ─── Supabase realtime subscription (push-based updates) ─────────────────
   useEffect(() => {
-    const interval = setInterval(() => {
-      loadData(true);
+    if (!isSupabaseConfigured()) {
+      setIsLiveConnected(false);
+      return undefined;
+    }
+
+    let refreshTimer: ReturnType<typeof setTimeout> | null = null;
+    const scheduleRefresh = () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      refreshTimer = setTimeout(() => {
+        loadData(true);
+      }, 300);
+    };
+
+    const unsubscribe = subscribeToLiveUpdates({
+      onEscrowChange: scheduleRefresh,
+      onEventInsert: (serverEvent) => {
+        setEvents((prev) => {
+          const timelineEvent: EscrowTimelineEvent = {
+            id: serverEvent.id != null ? String(serverEvent.id) : `evt_${Date.now()}`,
+            escrowId: serverEvent.escrowId,
+            type: serverEvent.action,
+            fromState: serverEvent.fromState ?? undefined,
+            toState: serverEvent.toState,
+            transactionHash: serverEvent.transactionHash ?? '',
+            timestamp: serverEvent.createdAt ?? new Date().toISOString(),
+            description: serverEvent.description,
+          };
+          if (prev.some((e) => e.id === timelineEvent.id)) return prev;
+          return [timelineEvent, ...prev].slice(0, 200);
+        });
+        scheduleRefresh();
+      },
+      onStatusChange: (status) => {
+        setIsLiveConnected(status === 'SUBSCRIBED');
+        if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+          console.warn('[useEscrowService] Realtime channel degraded:', status);
+        }
+      },
+    });
+
+    return () => {
+      if (refreshTimer) clearTimeout(refreshTimer);
+      unsubscribe();
+      setIsLiveConnected(false);
+    };
+  }, [loadData]);
+
+  // ─── Backend health ping (status probe only — no data polling) ───────────
+  useEffect(() => {
+    const interval = setInterval(async () => {
+      const health = await fetchHealth();
+      setIsBackendOnline(health.ok);
     }, 15000);
     return () => clearInterval(interval);
-  }, [loadData]);
+  }, []);
+
+  // ─── Wallet coin refresh ────────────────────────────────────────────────
+  const refreshCoins = useCallback(async () => {
+    try {
+      setCoins(await fetchWalletCoins());
+    } catch (err) {
+      console.warn('[useEscrowService] Wallet coins unavailable:', err);
+      setCoins([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshCoins();
+  }, [refreshCoins]);
 
   // ─── Create Escrow ───────────────────────────────────────────────────────
   const createEscrow = useCallback(
@@ -148,30 +198,19 @@ export function useEscrowService(): UseEscrowServiceReturn {
       setError(null);
 
       try {
-        const buyerAddress = address || 'mn_shielded_buyer_default';
+        if (!address) {
+          throw new Error('Connect a Midnight wallet before deploying an escrow.');
+        }
+
         const req: CreateEscrowRequest = {
-          buyerAddress,
+          buyerAddress: address,
           sellerAddress: params.sellerAddress,
           amount: params.amount,
           condition: params.condition,
         };
 
         const newRecord = await apiCreateEscrow(req);
-
-        // Optimistically prepend to active state
         setEscrows((prev) => [newRecord, ...prev]);
-
-        // Record timeline event
-        recordEvent({
-          id: `evt_${Date.now()}`,
-          escrowId: newRecord.id,
-          type: 'created',
-          toState: EscrowState.Created,
-          transactionHash: newRecord.transactionHash,
-          timestamp: newRecord.createdAt,
-          description: `Escrow agreement deployed on-chain (${params.amount} tDUST)`,
-        });
-
         return newRecord;
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'Error creating escrow';
@@ -181,7 +220,7 @@ export function useEscrowService(): UseEscrowServiceReturn {
         setActionLoading(false);
       }
     },
-    [address, recordEvent]
+    [address],
   );
 
   // ─── Perform Circuit Transition Action ───────────────────────────────────
@@ -195,13 +234,29 @@ export function useEscrowService(): UseEscrowServiceReturn {
       setError(null);
 
       try {
-        const target = escrows.find((e) => e.id === escrowId);
-        const fromState = target?.state;
+        const target = escrowsRef.current.find((e) => e.id === escrowId);
+        if (!target) {
+          throw new Error(`Escrow ${escrowId} not found`);
+        }
+
+        const sellerOnly = SELLER_ONLY_ACTIONS.has(action);
+        const secret = sellerOnly ? target.sellerSecret : target.buyerSecret;
+        if (!secret) {
+          throw new Error(
+            `Escrow ${escrowId} has no ${sellerOnly ? 'seller' : 'buyer'} secret available — cannot authorize '${action}'`,
+          );
+        }
+
+        let sellerPubKey = params?.sellerPubKey;
+        if (action === 'release' && !sellerPubKey) {
+          sellerPubKey = (await fetchWalletPublicKey()).publicKey;
+        }
 
         const result = await apiPerformEscrowAction(escrowId, {
           action,
-          value: params?.value || target?.amount,
-          sellerPubKey: params?.sellerPubKey,
+          secret,
+          value: params?.value || target.amount,
+          sellerPubKey,
           coinIndex: params?.coinIndex,
         });
 
@@ -209,7 +264,9 @@ export function useEscrowService(): UseEscrowServiceReturn {
           throw new Error(result.error || 'Contract transition failed');
         }
 
-        // Update local state optimistically
+        // Confirm the transition against the server response, then rely on the
+        // realtime stream for cross-client convergence.
+        const nowIso = new Date().toISOString();
         setEscrows((prev) =>
           prev.map((e) => {
             if (e.id !== escrowId) return e;
@@ -217,40 +274,34 @@ export function useEscrowService(): UseEscrowServiceReturn {
               ...e,
               state: result.newState,
               stateLabel: result.newStateLabel || ESCROW_STATE_LABELS[result.newState],
-              updatedAt: new Date().toISOString(),
+              updatedAt: nowIso,
             };
-            if (result.newState === EscrowState.Funded) updated.fundedAt = updated.updatedAt;
-            if (result.newState === EscrowState.Delivered) updated.deliveredAt = updated.updatedAt;
-            if (result.newState === EscrowState.Released) updated.releasedAt = updated.updatedAt;
-            if (result.newState === EscrowState.Disputed) updated.disputedAt = updated.updatedAt;
-            if (result.newState === EscrowState.Resolved) updated.resolvedAt = updated.updatedAt;
-            if (result.newState === EscrowState.Cancelled) updated.cancelledAt = updated.updatedAt;
+            if (result.newState === EscrowState.Funded) updated.fundedAt = nowIso;
+            if (result.newState === EscrowState.Delivered) updated.deliveredAt = nowIso;
+            if (result.newState === EscrowState.Released) updated.releasedAt = nowIso;
+            if (result.newState === EscrowState.Disputed) updated.disputedAt = nowIso;
+            if (result.newState === EscrowState.Resolved) updated.resolvedAt = nowIso;
+            if (result.newState === EscrowState.Cancelled) updated.cancelledAt = nowIso;
             return updated;
           })
         );
 
-        // Update selected escrow if opened in inspector
         setSelectedEscrow((prev) => {
           if (!prev || prev.id !== escrowId) return prev;
           return {
             ...prev,
             state: result.newState,
             stateLabel: result.newStateLabel || ESCROW_STATE_LABELS[result.newState],
-            updatedAt: new Date().toISOString(),
+            updatedAt: nowIso,
           };
         });
 
-        // Record timeline event
-        recordEvent({
-          id: `evt_${Date.now()}`,
-          escrowId,
-          type: action,
-          fromState,
-          toState: result.newState,
-          transactionHash: result.transactionHash,
-          timestamp: new Date().toISOString(),
-          description: `Executed ZK Circuit '${action}' → State ${result.newStateLabel || ESCROW_STATE_LABELS[result.newState]}`,
-        });
+        if (result.warning) {
+          console.warn('[useEscrowService] Action warning:', result.warning);
+        }
+
+        // Re-sync from live sources so the event log reflects the persisted row.
+        loadData(true);
 
         return result;
       } catch (err: unknown) {
@@ -261,7 +312,7 @@ export function useEscrowService(): UseEscrowServiceReturn {
         setActionLoading(false);
       }
     },
-    [escrows, recordEvent]
+    [loadData],
   );
 
   // ─── Filtered Escrows Calculation ────────────────────────────────────────
@@ -309,6 +360,7 @@ export function useEscrowService(): UseEscrowServiceReturn {
     refreshing,
     error,
     isBackendOnline,
+    isLiveConnected,
     setFilter,
     setSelectedEscrow,
     refresh: () => loadData(false),

@@ -145,6 +145,32 @@ export const TelemetryBar: React.FC<TelemetryBarProps> = ({ stats, isBackendOnli
             >
               {item.sub}
             </div>
+
+            {item.id === 'tvl' && (
+              <div
+                style={{
+                  marginTop: 10,
+                  paddingTop: 10,
+                  borderTop: '1px solid var(--border-whisper)',
+                  fontSize: 10,
+                  fontFamily: 'var(--font-mono)',
+                  color: isBackendOnline ? 'var(--emerald)' : 'var(--crimson)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                }}
+              >
+                <span
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: '50%',
+                    background: isBackendOnline ? 'var(--emerald)' : 'var(--crimson)',
+                  }}
+                />
+                {isBackendOnline ? 'API LINK NOMINAL' : 'API LINK DOWN'}
+              </div>
+            )}
           </SpotlightCard>
         </motion.div>
       ))}

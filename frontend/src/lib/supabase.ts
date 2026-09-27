@@ -1,9 +1,11 @@
 /**
  * Umbra Supabase Data Client
- * Provides optional direct persistence and real-time subscription access.
+ * Real database access plus realtime change subscriptions.
+ * Used as the direct data plane: every row comes from Postgres — nothing is
+ * synthesized client-side.
  */
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { EscrowRecord, EscrowState, ESCROW_STATE_LABELS } from '../types/escrow';
+import { createClient, SupabaseClient, type RealtimePostgresChangesPayload } from '@supabase/supabase-js';
+import { EscrowRecord, EscrowState, ESCROW_STATE_LABELS, EscrowServerEvent, EscrowTimelineEvent } from '../types/escrow';
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || '';
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
@@ -75,28 +77,77 @@ export function rowToEscrowRecord(row: EscrowDbRow): EscrowRecord {
   };
 }
 
-export function escrowRecordToRow(record: EscrowRecord): EscrowDbRow {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function rowToServerEvent(row: any): EscrowServerEvent {
   return {
-    id: record.id,
-    contract_address: record.contractAddress,
-    buyer_address: record.buyerAddress,
-    seller_address: record.sellerAddress,
-    amount: record.amount,
-    condition: record.condition,
-    state: Number(record.state),
-    state_label: record.stateLabel,
-    created_at: record.createdAt,
-    updated_at: record.updatedAt,
-    funded_at: record.fundedAt,
-    delivered_at: record.deliveredAt,
-    released_at: record.releasedAt,
-    disputed_at: record.disputedAt,
-    resolved_at: record.resolvedAt,
-    cancelled_at: record.cancelledAt,
-    transaction_hash: record.transactionHash,
-    deposit_coin_index: record.depositCoinIndex,
-    buyer_secret: record.buyerSecret,
-    seller_secret: record.sellerSecret,
-    salt: record.salt,
+    id: row.id,
+    escrowId: row.escrow_id,
+    action: row.action,
+    fromState: row.from_state,
+    toState: row.to_state,
+    transactionHash: row.transaction_hash,
+    blockHeight: row.block_height,
+    description: row.description,
+    createdAt: row.created_at,
   };
 }
+
+export function serverEventToTimeline(event: EscrowServerEvent): EscrowTimelineEvent {
+  return {
+    id: event.id != null ? String(event.id) : `evt_${event.escrowId}_${event.createdAt ?? ''}`,
+    escrowId: event.escrowId,
+    type: event.action,
+    fromState: event.fromState ?? undefined,
+    toState: event.toState,
+    transactionHash: event.transactionHash ?? '',
+    timestamp: event.createdAt ?? new Date().toISOString(),
+    description: event.description,
+  };
+}
+
+// ─── Realtime Subscriptions ─────────────────────────────────────────────────
+
+export interface RealtimeHandlers {
+  onEscrowChange: (payload: RealtimePostgresChangesPayload<{ [key: string]: unknown }>) => void;
+  onEventInsert: (event: EscrowServerEvent) => void;
+  onStatusChange: (status: 'SUBSCRIBED' | 'CHANNEL_ERROR' | 'TIMED_OUT' | 'CLOSED') => void;
+}
+
+/**
+ * Subscribes to live Postgres changes on the escrows and escrow_events tables.
+ * Returns an unsubscribe function. Requires Supabase realtime to be enabled
+ * for both tables (see supabase/schema.sql).
+ */
+export function subscribeToLiveUpdates(handlers: RealtimeHandlers): () => void {
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    return () => undefined;
+  }
+
+  const channel = supabase
+    .channel('umbra-escrow-live')
+    .on(
+      'postgres_changes',
+      { event: '*', schema: 'public', table: 'escrows' },
+      handlers.onEscrowChange,
+    )
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'escrow_events' }, (payload) => {
+      handlers.onEventInsert(rowToServerEvent(payload.new));
+    })
+    .subscribe((status) => {
+      if (
+        status === 'SUBSCRIBED' ||
+        status === 'CHANNEL_ERROR' ||
+        status === 'TIMED_OUT' ||
+        status === 'CLOSED'
+      ) {
+        handlers.onStatusChange(status);
+      }
+    });
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+}
+
+export { rowToServerEvent };

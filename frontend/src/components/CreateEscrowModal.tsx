@@ -2,16 +2,11 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
-  Shield,
-  Coins,
-  FileText,
-  UserCheck,
   AlertCircle,
   Terminal,
-  Sparkles,
   Lock,
 } from 'lucide-react';
-import { DEMO_BUYER_ADDRESS, DEMO_SELLER_ADDRESS, useMidnightWallet } from '../context/MidnightWalletContext';
+import { useMidnightWallet } from '../context/MidnightWalletContext';
 
 interface CreateEscrowModalProps {
   isOpen: boolean;
@@ -27,7 +22,7 @@ export const CreateEscrowModal: React.FC<CreateEscrowModalProps> = ({
   isLoading = false,
 }) => {
   const { address } = useMidnightWallet();
-  const [sellerAddress, setSellerAddress] = useState(DEMO_SELLER_ADDRESS);
+  const [sellerAddress, setSellerAddress] = useState('');
   const [amount, setAmount] = useState('1000');
   const [condition, setCondition] = useState('Delivery and cryptographic verification of milestone specifications.');
   const [validationError, setValidationError] = useState<string | null>(null);
@@ -37,6 +32,11 @@ export const CreateEscrowModal: React.FC<CreateEscrowModalProps> = ({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setValidationError(null);
+
+    if (!address) {
+      setValidationError('Connect a Midnight wallet first — the buyer address comes from your live wallet.');
+      return;
+    }
 
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
@@ -205,43 +205,26 @@ export const CreateEscrowModal: React.FC<CreateEscrowModalProps> = ({
                   padding: '10px 14px',
                   fontSize: 12,
                   fontFamily: 'var(--font-mono)',
-                  color: 'var(--text-faint)',
+                  color: address ? 'var(--text-hero)' : 'var(--crimson)',
                   wordBreak: 'break-all',
                 }}
               >
-                {address || DEMO_BUYER_ADDRESS}
+                {address || 'Wallet not connected — connect 1am to continue'}
               </div>
             </div>
 
             {/* Seller Address */}
             <div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 }}>
-                <label
-                  style={{
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 11,
-                    color: 'var(--text-sub)',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  Seller Shielded Address
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setSellerAddress(DEMO_SELLER_ADDRESS)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--cyan)',
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 11,
-                    cursor: 'pointer',
-                    padding: 0,
-                  }}
-                >
-                  Use Demo Counterparty
-                </button>
-              </div>
+              <label
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 11,
+                  color: 'var(--text-sub)',
+                  textTransform: 'uppercase',
+                }}
+              >
+                Seller Shielded Address
+              </label>
               <input
                 type="text"
                 value={sellerAddress}
@@ -330,7 +313,7 @@ export const CreateEscrowModal: React.FC<CreateEscrowModalProps> = ({
                 rows={3}
                 value={condition}
                 onChange={(e) => setCondition(e.target.value)}
-                placeholder="Describe milestone conditions (committed as Pedersen SHA-256 hash)..."
+                placeholder="Describe milestone conditions (committed as domain-separated persistentHash)..."
                 style={{
                   width: '100%',
                   background: 'rgba(255, 255, 255, 0.03)',

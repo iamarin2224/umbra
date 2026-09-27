@@ -52,16 +52,16 @@ export const ZKExplorerView: React.FC = () => {
           Circuit &amp; Commitment Synthesizer
         </h2>
         <p style={{ fontSize: '14px', color: 'var(--text-sub)', marginTop: '6px', maxWidth: '640px' }}>
-          Simulate how plaintext contract parameters transform into uninvertible Pedersen commitments before on-chain ledger publication.
+          Simulate how plaintext contract parameters transform into domain-separated persistentHash commitments (client preview — actual commitments are computed on-chain by the contract).
         </p>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '24px' }}>
-        {/* Pedersen Simulator Panel */}
+        {/* Commitment Simulator Panel */}
         <SpotlightCard className="fluid-glass-panel" spotlightColor="rgba(0, 229, 255, 0.2)">
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
             <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 600 }}>
-              Pedersen Lab Simulator
+              Persistent Hash Lab Simulator
             </h3>
             <span
               style={{
@@ -159,7 +159,7 @@ export const ZKExplorerView: React.FC = () => {
                   textTransform: 'uppercase',
                 }}
               >
-                Condition Commitment Hash (On-Chain)
+                Condition Commitment (Local Preview)
               </span>
               <button
                 onClick={() => handleCopy(condCommitment, 'cond')}
@@ -200,7 +200,7 @@ export const ZKExplorerView: React.FC = () => {
                   textTransform: 'uppercase',
                 }}
               >
-                Balance Commitment Hash (On-Chain)
+                Balance Commitment (Local Preview)
               </span>
               <button
                 onClick={() => handleCopy(amtCommitment, 'amt')}
@@ -257,44 +257,45 @@ export const ZKExplorerView: React.FC = () => {
             </span>
           </div>
           <pre style={{ overflowX: 'auto' }}>
-            <code>{`// Compact Smart Contract Circuit
-pragma language_version >= 0.16.0;
+            <code>{`pragma language_version 0.23;
+import CompactStandardLibrary;
 
-export ledger buyer_commitment: Bytes<32>;
-export ledger seller_commitment: Bytes<32>;
-export ledger amount_commitment: Bytes<32>;
-export ledger condition_commitment: Bytes<32>;
-export ledger escrow_state: Uint<8>;
+export enum EscrowState { STATE_CREATED, STATE_FUNDED, ... }
 
-export circuit deposit(witness b_secret: Bytes<32>): Void {
-  assert escrow_state == 0;
-  assert pedersen_hash(b_secret) == buyer_commitment;
-  escrow_state = 1; // Funded
+export ledger buyerCommitment: Bytes<32>;
+export ledger sellerCommitment: Bytes<32>;
+export ledger amountCommitment: Bytes<32>;
+export ledger conditionCommitment: Bytes<32>;
+export ledger escrowState: EscrowState;
+export ledger hasDeposit: Boolean;
+
+witness buyerSecret(): Bytes<32>;
+witness sellerSecret(): Bytes<32>;
+
+circuit commitBuyer(secret: Bytes<32>): Bytes<32> {
+  return persistentHash<Vector<2, Bytes<32>>>(
+    [pad(32, "midnight-lock:v1:buyer:"), secret]);
 }
 
-export circuit confirm_delivery(
-  witness s_secret: Bytes<32>, 
-  witness condition: Bytes<32>
-): Void {
-  assert escrow_state == 1;
-  assert pedersen_hash(condition) == condition_commitment;
-  escrow_state = 2; // Delivered
+export circuit deposit(value: Uint<64>): [] {
+  const buyer = buyerSecret();
+  assert(buyerCommitment == commitBuyer(buyer), "Not the buyer");
+  assert(escrowState == EscrowState.STATE_CREATED, "...");
+  // mint shielded coin, then:
+  escrowState = EscrowState.STATE_FUNDED;
 }
 
-export circuit release_funds(witness b_secret: Bytes<32>): Void {
-  assert escrow_state == 2;
-  assert pedersen_hash(b_secret) == buyer_commitment;
-  escrow_state = 3; // Terminal Settlement
+export circuit release(sellerPubKey: ZswapCoinPublicKey, coinIndex: Uint<64>): [] {
+  assert(escrowState == EscrowState.STATE_DELIVERED, "...");
+  sendShielded(...); // buyer -> seller payout
+  escrowState = EscrowState.STATE_RELEASED;
 }
 
-export circuit dispute(): Void {
-  assert escrow_state == 1 || escrow_state == 2;
-  escrow_state = 4; // Disputed
-}
-
-export circuit resolve(): Void {
-  assert escrow_state == 4;
-  escrow_state = 5; // Resolved
+export circuit cancel(coinIndex: Uint<64>): [] {
+  assert(escrowState == EscrowState.STATE_CREATED
+      || escrowState == EscrowState.STATE_FUNDED, "...");
+  // refund deposit to contract if hasDeposit
+  escrowState = EscrowState.STATE_CANCELLED;
 }`}</code>
           </pre>
         </SpotlightCard>

@@ -31,13 +31,14 @@ export function App() {
     setFilter,
     selectedEscrow,
     setSelectedEscrow,
-    loading,
     actionLoading,
     refreshing,
     refresh,
     createEscrow,
     executeAction,
     isBackendOnline,
+    isLiveConnected,
+    error,
   } = useEscrowService();
 
   const handleOpenActionModal = (escrow: EscrowRecord, action: EscrowActionType) => {
@@ -101,7 +102,79 @@ export function App() {
       {/* ── Main Workspace ── */}
       <main style={{ flex: 1, padding: '36px 0 60px', position: 'relative', zIndex: 10 }}>
         <div style={{ maxWidth: '1400px', width: '100%', margin: '0 auto', padding: '0 24px' }}>
-          
+
+          {/* ── Live Pipeline Status Strip ── */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 16,
+              marginBottom: 16,
+              fontFamily: 'var(--font-mono)',
+              fontSize: 11,
+            }}
+          >
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                color: isLiveConnected ? 'var(--emerald)' : 'var(--text-faint)',
+              }}
+            >
+              <span
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: '50%',
+                  background: isLiveConnected ? 'var(--emerald)' : '#64748b',
+                  boxShadow: isLiveConnected ? '0 0 8px var(--emerald)' : 'none',
+                }}
+              />
+              {isLiveConnected ? 'REALTIME STREAM ACTIVE' : 'REALTIME STREAM OFFLINE'}
+            </span>
+            <span
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 6,
+                color: isBackendOnline ? 'var(--cyan)' : 'var(--crimson)',
+              }}
+            >
+              <span
+                style={{
+                  width: 7,
+                  height: 7,
+                  borderRadius: '50%',
+                  background: isBackendOnline ? 'var(--cyan)' : 'var(--crimson)',
+                }}
+              />
+              {isBackendOnline ? 'API ONLINE' : 'API OFFLINE'}
+            </span>
+          </div>
+
+          {/* ── Error Banner (real failures only — never swallowed) ── */}
+          {error && (
+            <div
+              role="alert"
+              style={{
+                maxWidth: 900,
+                margin: '0 auto 20px',
+                background: 'rgba(251, 113, 133, 0.1)',
+                border: '1px solid rgba(251, 113, 133, 0.35)',
+                borderRadius: 12,
+                padding: '12px 16px',
+                color: 'var(--crimson)',
+                fontFamily: 'var(--font-mono)',
+                fontSize: 12,
+                textAlign: 'center',
+              }}
+            >
+              {error}
+            </div>
+          )}
+
           {/* ── Live Protocol Telemetry Metrics (Phase 18) ── */}
           <TelemetryBar stats={stats} isBackendOnline={isBackendOnline} />
 
@@ -182,7 +255,7 @@ export function App() {
                   }}
                 >
                   {[
-                    { num: '01', title: 'Pedersen Lock', desc: 'Capital committed as an uninvertible hash' },
+                    { num: '01', title: 'Hash Lock', desc: 'Capital committed as an uninvertible persistentHash' },
                     { num: '02', title: 'Milestone Proof', desc: 'Private witness satisfies contract rules' },
                     { num: '03', title: 'Shielded Settlement', desc: 'Settlement completes with zero ledger leak' },
                   ].map((step, i) => (

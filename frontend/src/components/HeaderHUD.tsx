@@ -160,7 +160,7 @@ export const HeaderHUD: React.FC<HeaderHUDProps> = ({
               }}
             />
             <span style={{ color: isBackendOnline ? '#e2e8f0' : 'var(--gold)' }}>
-              {isBackendOnline ? 'API Synced' : 'Offline Mock Mode'}
+              {isBackendOnline ? 'API Synced' : 'API Offline'}
             </span>
           </div>
         </div>

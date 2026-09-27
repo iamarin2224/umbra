@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useMidnightWallet, DEMO_BUYER_ADDRESS, DEMO_SELLER_ADDRESS } from '../context/MidnightWalletContext';
-import { Copy, Check, ShieldCheck, Power, Wallet, ChevronDown, ExternalLink } from 'lucide-react';
+import { useMidnightWallet } from '../context/MidnightWalletContext';
+import { Copy, Check, ShieldCheck, Power, Wallet, ChevronDown, ExternalLink, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const WalletHUD: React.FC = () => {
@@ -10,7 +10,7 @@ export const WalletHUD: React.FC = () => {
     address,
     shortAddress,
     networkId,
-    availableWallets,
+    error,
     connect,
     disconnect,
   } = useMidnightWallet();
@@ -73,10 +73,27 @@ export const WalletHUD: React.FC = () => {
           ) : (
             <>
               <Wallet size={12} />
-              <span>Connect Lace</span>
+              <span>Connect 1am</span>
             </>
           )}
         </button>
+
+        {error && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              fontFamily: 'var(--font-mono)',
+              fontSize: '10px',
+              color: 'var(--crimson)',
+              maxWidth: '280px',
+            }}
+          >
+            <AlertCircle size={11} />
+            <span>{error}</span>
+          </div>
+        )}
       </div>
     );
   }
@@ -150,7 +167,7 @@ export const WalletHUD: React.FC = () => {
             {/* Address Display & Copy */}
             <div style={{ background: 'rgba(255, 255, 255, 0.03)', border: '1px solid var(--border-whisper)', borderRadius: '10px', padding: '10px 12px', marginBottom: '14px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <span style={{ fontSize: '11px', color: 'var(--text-faint)' }}>Wallet Address</span>
+                <span style={{ fontSize: '11px', color: 'var(--text-faint)' }}>Unshielded Address</span>
                 <button
                   onClick={() => handleCopy(address || '')}
                   style={{
@@ -170,49 +187,6 @@ export const WalletHUD: React.FC = () => {
               </div>
               <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--text-hero)', wordBreak: 'break-all' }}>
                 {address}
-              </div>
-            </div>
-
-            {/* Quick Demo Switchers */}
-            <div style={{ marginBottom: '14px' }}>
-              <div style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--text-faint)', textTransform: 'uppercase', marginBottom: '6px' }}>
-                Simulate Enclave Role
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px' }}>
-                <button
-                  onClick={() => {
-                    localStorage.setItem('umbra_wallet_address', DEMO_BUYER_ADDRESS);
-                    window.location.reload();
-                  }}
-                  style={{
-                    background: address === DEMO_BUYER_ADDRESS ? 'rgba(0, 240, 255, 0.15)' : 'rgba(255, 255, 255, 0.04)',
-                    border: `1px solid ${address === DEMO_BUYER_ADDRESS ? 'var(--cyan)' : 'var(--border-whisper)'}`,
-                    color: 'var(--text-hero)',
-                    fontSize: '11px',
-                    padding: '6px 8px',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Buyer Profile
-                </button>
-                <button
-                  onClick={() => {
-                    localStorage.setItem('umbra_wallet_address', DEMO_SELLER_ADDRESS);
-                    window.location.reload();
-                  }}
-                  style={{
-                    background: address === DEMO_SELLER_ADDRESS ? 'rgba(192, 132, 252, 0.15)' : 'rgba(255, 255, 255, 0.04)',
-                    border: `1px solid ${address === DEMO_SELLER_ADDRESS ? 'var(--amethyst)' : 'var(--border-whisper)'}`,
-                    color: 'var(--text-hero)',
-                    fontSize: '11px',
-                    padding: '6px 8px',
-                    borderRadius: '8px',
-                    cursor: 'pointer',
-                  }}
-                >
-                  Seller Profile
-                </button>
               </div>
             </div>
 

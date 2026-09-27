@@ -13,7 +13,7 @@ export const AboutUmbraView: React.FC = () => {
     },
     {
       q: 'What happens to my private witness data?',
-      a: 'Private witness data never leaves your browser as plaintext. The amount and condition strings are committed as uninvertible Pedersen hashes. Your identity is a private witness statement validated in zero-knowledge.',
+      a: 'Private witness data never leaves your browser as plaintext. The amount and condition strings are committed as domain-separated persistentHash commitments. Your identity is a private witness statement validated in zero-knowledge.',
     },
     {
       q: 'What tokens are used for transactions on Preprod?',
@@ -104,8 +104,8 @@ export const AboutUmbraView: React.FC = () => {
             </thead>
             <tbody>
               {[
-                { on: '● Contract instance deployed on Midnight', off: '✓ Escrow capital integer (committed via Pedersen hash)' },
-                { on: '● State Machine Node (Created, Funded, Delivered, Released)', off: '✓ Milestone delivery description & SLA specs (SHA-256 witness)' },
+                { on: '● Contract instance deployed on Midnight', off: '✓ Escrow capital integer (committed via persistentHash)' },
+                { on: '● State Machine Node (Created, Funded, Delivered, Released)', off: '✓ Milestone delivery description & SLA specs (condition witness)' },
                 { on: '● Transaction block height & timestamp receipts', off: '✓ Buyer shielded public key (enclave witness verification)' },
                 { on: '● zkSNARK mathematical proof validity', off: '✓ Seller payout address & wallet balance' },
                 { on: '● Transition invocation count', off: '✓ Dispute cause & counterparty communications' },

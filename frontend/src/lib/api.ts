@@ -1,13 +1,12 @@
 /**
  * Umbra REST API Client
- * Interacts with the Umbra Express API server on localhost:3001 (or configured VITE_API_URL).
- * Includes robust error unwrapping, offline fallback caching, and typed return models.
+ * Talks to the live Umbra Express API (and directly to Supabase as a secondary
+ * real data source). Every call either returns real server data or throws —
+ * there is no simulated record generation and no offline mock cache.
  */
 
 import {
   EscrowRecord,
-  EscrowState,
-  ESCROW_STATE_LABELS,
   CreateEscrowRequest,
   EscrowActionRequest,
   EscrowActionResult,
@@ -15,113 +14,27 @@ import {
   WalletPublicKeyResponse,
   ApiHealthResponse,
   EscrowFilter,
+  EscrowServerEvent,
   WalletCoin,
+  EscrowTimelineEvent,
 } from '../types/escrow';
-import { getSupabaseClient, rowToEscrowRecord } from './supabase';
+import { getSupabaseClient, rowToEscrowRecord, rowToServerEvent, serverEventToTimeline } from '../lib/supabase';
 
 const API_BASE_URL = (import.meta.env.VITE_API_URL || 'http://localhost:3001').replace(/\/+$/, '');
-const CACHE_KEY = 'umbra_escrows_cache';
 
-// ─── Initial Seed / Mock Data for Offline Resilience ─────────────────────────
-
-const INITIAL_FALLBACK_ESCROWS: EscrowRecord[] = [
-  {
-    id: 'escrow_8f01b2a',
-    contractAddress: '0x8f01b2a9c21ef9a820c741e2f9821ef9a820c741e2f9821ef9a820c741e2f982',
-    buyerAddress: 'mn_shielded_1q2w3e4r5t6y7u8i9o0p1a2s3d4f5g6h7j8k9l0z',
-    sellerAddress: 'mn_shielded_9z8y7x6w5v4u3t2s1r0q9p8o7n6m5l4k3j2h1g0f',
-    amount: '1500',
-    condition: 'Audit delivery of Compact ZK verification suite & prover binaries.',
-    state: EscrowState.Funded,
-    stateLabel: 'Funded',
-    createdAt: new Date(Date.now() - 3600000 * 4).toISOString(),
-    updatedAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-    fundedAt: new Date(Date.now() - 3600000 * 2).toISOString(),
-    deliveredAt: null,
-    releasedAt: null,
-    disputedAt: null,
-    resolvedAt: null,
-    cancelledAt: null,
-    transactionHash: '0x94a3b8c1ef7209821ef9a820c741e2f9821ef9a820c741e2f9821ef9a820c741',
-  },
-  {
-    id: 'escrow_3c99f1e',
-    contractAddress: '0x3c99f1ea9c21ef9a820c741e2f9821ef9a820c741e2f9821ef9a820c741e2f9',
-    buyerAddress: 'mn_shielded_2w3e4r5t6y7u8i9o0p1a2s3d4f5g6h7j8k9l0z1x',
-    sellerAddress: 'mn_shielded_8y7x6w5v4u3t2s1r0q9p8o7n6m5l4k3j2h1g0f9e',
-    amount: '4200',
-    condition: 'Secure multi-party computing keys for cross-border private settlement.',
-    state: EscrowState.Delivered,
-    stateLabel: 'Delivered',
-    createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
-    updatedAt: new Date(Date.now() - 3600000 * 1).toISOString(),
-    fundedAt: new Date(Date.now() - 3600000 * 20).toISOString(),
-    deliveredAt: new Date(Date.now() - 3600000 * 1).toISOString(),
-    releasedAt: null,
-    disputedAt: null,
-    resolvedAt: null,
-    cancelledAt: null,
-    transactionHash: '0xe2f9821ef9a820c741e2f9821ef9a820c741e2f9821ef9a820c741e2f9821ef9',
-  },
-  {
-    id: 'escrow_e140a77',
-    contractAddress: '0xe140a77a9c21ef9a820c741e2f9821ef9a820c741e2f9821ef9a820c741e2f9',
-    buyerAddress: 'mn_shielded_3e4r5t6y7u8i9o0p1a2s3d4f5g6h7j8k9l0z1x2c',
-    sellerAddress: 'mn_shielded_7x6w5v4u3t2s1r0q9p8o7n6m5l4k3j2h1g0f9e8d',
-    amount: '850',
-    condition: 'Protocol mathematical specification and circuit benchmark review.',
-    state: EscrowState.Released,
-    stateLabel: 'Settled',
-    createdAt: new Date(Date.now() - 3600000 * 48).toISOString(),
-    updatedAt: new Date(Date.now() - 3600000 * 12).toISOString(),
-    fundedAt: new Date(Date.now() - 3600000 * 40).toISOString(),
-    deliveredAt: new Date(Date.now() - 3600000 * 24).toISOString(),
-    releasedAt: new Date(Date.now() - 3600000 * 12).toISOString(),
-    disputedAt: null,
-    resolvedAt: null,
-    cancelledAt: null,
-    transactionHash: '0x741e2f9821ef9a820c741e2f9821ef9a820c741e2f9821ef9a820c741e2f9821',
-  },
-];
-
-// ─── Local Cache Accessors ──────────────────────────────────────────────────
-
-function getCachedEscrows(): EscrowRecord[] {
+async function readError(res: Response, fallback: string): Promise<Error> {
   try {
-    const raw = localStorage.getItem(CACHE_KEY);
-    if (!raw) {
-      localStorage.setItem(CACHE_KEY, JSON.stringify(INITIAL_FALLBACK_ESCROWS));
-      return INITIAL_FALLBACK_ESCROWS;
-    }
-    return JSON.parse(raw);
+    const payload = (await res.json()) as { error?: string };
+    if (payload.error) return new Error(payload.error);
   } catch {
-    return INITIAL_FALLBACK_ESCROWS;
+    // non-JSON error body
   }
+  return new Error(`${fallback} (HTTP ${res.status})`);
 }
-
-function setCachedEscrows(items: EscrowRecord[]): void {
-  try {
-    localStorage.setItem(CACHE_KEY, JSON.stringify(items));
-  } catch {
-    // Ignore storage quota errors
-  }
-}
-
-function updateCachedEscrow(updated: EscrowRecord): void {
-  const current = getCachedEscrows();
-  const index = current.findIndex((e) => e.id === updated.id);
-  if (index >= 0) {
-    current[index] = updated;
-  } else {
-    current.unshift(updated);
-  }
-  setCachedEscrows(current);
-}
-
-// ─── Public API Methods ─────────────────────────────────────────────────────
 
 /**
- * Health check ping to verify API server availability.
+ * Health check ping — returns ok:false when the API is unreachable (a real
+ * status probe, not fabricated data).
  */
 export async function fetchHealth(): Promise<ApiHealthResponse> {
   try {
@@ -138,229 +51,134 @@ export async function fetchHealth(): Promise<ApiHealthResponse> {
 
 /**
  * Query available shielded coins from the Midnight wallet server.
+ * Throws when the API or wallet is unavailable — returns [] only when the
+ * server genuinely reports no coins.
  */
 export async function fetchWalletCoins(): Promise<WalletCoin[]> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/wallet/coins`);
-    if (!res.ok) throw new Error(`Coins HTTP ${res.status}`);
-    const data = await res.json();
-    if (Array.isArray(data)) return data;
-    if (data && Array.isArray((data as WalletAvailableCoinsResponse).coins)) {
-      return (data as WalletAvailableCoinsResponse).coins;
-    }
-    return [];
-  } catch (err) {
-    console.warn('[Umbra-API] fetchWalletCoins fallback:', err);
-    return [
-      { nonce: '0x01a', color: 'tDUST', value: '10000000000', mtIndex: '0' },
-      { nonce: '0x02b', color: 'tDUST', value: '5000000000', mtIndex: '1' },
-    ];
+  const res = await fetch(`${API_BASE_URL}/api/wallet/coins`);
+  if (!res.ok) throw await readError(res, 'Failed to fetch wallet coins');
+  const data = await res.json();
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray((data as WalletAvailableCoinsResponse).coins)) {
+    return (data as WalletAvailableCoinsResponse).coins;
   }
+  return [];
 }
 
 /**
- * Retrieve coin public key for the connected server enclave.
+ * Retrieve the coin public key for the connected server enclave.
  */
 export async function fetchWalletPublicKey(): Promise<WalletPublicKeyResponse> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/wallet/public-key`);
-    if (!res.ok) throw new Error(`PubKey HTTP ${res.status}`);
-    return await res.json();
-  } catch {
-    return {
-      publicKey: '0x9a820c741e2f9821ef9a820c741e2f9821ef9a820c741e2f9821ef9a820c741e',
-    };
-  }
+  const res = await fetch(`${API_BASE_URL}/api/wallet/public-key`);
+  if (!res.ok) throw await readError(res, 'Failed to fetch wallet public key');
+  return await res.json();
 }
 
 /**
- * Fetch list of escrows, checking API server, Supabase, and local cache.
+ * Fetch the escrow list. Prefers the REST API; falls back to a direct
+ * Supabase read (still real database rows). Throws when neither is reachable.
  */
 export async function fetchEscrows(filter?: EscrowFilter): Promise<EscrowRecord[]> {
-  let records: EscrowRecord[] = [];
-
-  // 1. Try REST API endpoint
   try {
     let url = `${API_BASE_URL}/api/escrows`;
-    if (filter?.buyerAddress) {
-      url += `?buyerAddress=${encodeURIComponent(filter.buyerAddress)}`;
-    }
+    const params = new URLSearchParams();
+    if (filter?.buyerAddress) params.set('buyerAddress', filter.buyerAddress);
+    if (filter?.sellerAddress) params.set('sellerAddress', filter.sellerAddress);
+    const queryString = params.toString();
+    if (queryString) url += `?${queryString}`;
+
     const res = await fetch(url);
     if (res.ok) {
-      const data = await res.json();
-      if (Array.isArray(data) && data.length > 0) {
-        records = data;
-        setCachedEscrows(records);
-        return applyClientFilter(records, filter);
-      }
+      return (await res.json()) as EscrowRecord[];
     }
-  } catch {
-    // API offline, attempt Supabase fallback
+    if (res.status !== 503) {
+      throw await readError(res, 'Failed to fetch escrows');
+    }
+    // API reports Supabase unconfigured — try a direct Supabase read below.
+  } catch (err) {
+    const supabase = getSupabaseClient();
+    if (!supabase) throw err;
+    // fall through to direct Supabase query
   }
 
-  // 2. Try Direct Supabase connection
   const supabase = getSupabaseClient();
-  if (supabase) {
-    try {
-      let query = supabase.from('escrows').select('*');
-      if (filter?.buyerAddress) {
-        query = query.eq('buyer_address', filter.buyerAddress);
-      }
-      const { data, error } = await query.order('created_at', { ascending: false });
-      if (!error && data && data.length > 0) {
-        records = data.map(rowToEscrowRecord);
-        setCachedEscrows(records);
-        return applyClientFilter(records, filter);
-      }
-    } catch {
-      // Supabase offline, fallback to local cache
-    }
+  if (!supabase) {
+    throw new Error(
+      'Cannot load escrows: API server unreachable and Supabase is not configured in the frontend.',
+    );
   }
 
-  // 3. Resilient Local Cache Fallback
-  records = getCachedEscrows();
-  return applyClientFilter(records, filter);
+  let query = supabase.from('escrows').select('*');
+  if (filter?.buyerAddress) query = query.eq('buyer_address', filter.buyerAddress);
+  if (filter?.sellerAddress) query = query.eq('seller_address', filter.sellerAddress);
+  const { data, error } = await query.order('created_at', { ascending: false });
+  if (error) {
+    throw new Error(`Failed to load escrows from Supabase: ${error.message}`);
+  }
+  return (data || []).map(rowToEscrowRecord);
 }
 
 /**
- * Deploy a new zero-knowledge escrow on Midnight.
+ * Fetch the append-only on-chain event log.
+ */
+export async function fetchEvents(escrowId?: string): Promise<EscrowTimelineEvent[]> {
+  try {
+    const url = escrowId
+      ? `${API_BASE_URL}/api/escrows/${encodeURIComponent(escrowId)}/events`
+      : `${API_BASE_URL}/api/events`;
+    const res = await fetch(url);
+    if (res.ok) {
+      return ((await res.json()) as EscrowServerEvent[]).map(serverEventToTimeline);
+    }
+    if (res.status !== 503) throw await readError(res, 'Failed to fetch events');
+  } catch (err) {
+    const supabase = getSupabaseClient();
+    if (!supabase) throw err;
+  }
+
+  const supabase = getSupabaseClient();
+  if (!supabase) {
+    throw new Error(
+      'Cannot load events: API server unreachable and Supabase is not configured in the frontend.',
+    );
+  }
+  let query = supabase.from('escrow_events').select('*');
+  if (escrowId) query = query.eq('escrow_id', escrowId);
+  const { data, error } = await query
+    .order('created_at', { ascending: false })
+    .order('id', { ascending: false })
+    .limit(500);
+  if (error) throw new Error(`Failed to load events from Supabase: ${error.message}`);
+  return (data || []).map((row) => serverEventToTimeline(rowToServerEvent(row)));
+}
+
+/**
+ * Deploy a new zero-knowledge escrow on Midnight. Requires the API server —
+ * there is no client-side simulated deployment.
  */
 export async function createEscrow(req: CreateEscrowRequest): Promise<EscrowRecord> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/escrows`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(req),
-    });
-
-    if (!res.ok) {
-      const errPayload = await res.json().catch(() => ({}));
-      throw new Error(errPayload.error || `Deploy error HTTP ${res.status}`);
-    }
-
-    const record: EscrowRecord = await res.json();
-    updateCachedEscrow(record);
-    return record;
-  } catch (err) {
-    console.warn('[Umbra-API] createEscrow API call failed, generating simulated on-chain record:', err);
-    const timestamp = new Date().toISOString();
-    const hexId = Math.random().toString(16).slice(2, 8);
-    const simulated: EscrowRecord = {
-      id: `escrow_${hexId}`,
-      contractAddress: `0x${hexId}a9c21ef9a820c741e2f9821ef9a820c741e2f9821ef9a820c741e2f982`,
-      buyerAddress: req.buyerAddress,
-      sellerAddress: req.sellerAddress,
-      amount: req.amount,
-      condition: req.condition,
-      state: EscrowState.Created,
-      stateLabel: 'Created',
-      createdAt: timestamp,
-      updatedAt: timestamp,
-      fundedAt: null,
-      deliveredAt: null,
-      releasedAt: null,
-      disputedAt: null,
-      resolvedAt: null,
-      cancelledAt: null,
-      transactionHash: `0x${Math.random().toString(16).slice(2)}${Math.random().toString(16).slice(2)}`,
-    };
-
-    updateCachedEscrow(simulated);
-    return simulated;
-  }
+  const res = await fetch(`${API_BASE_URL}/api/escrows`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(req),
+  });
+  if (!res.ok) throw await readError(res, 'Escrow deploy failed');
+  return (await res.json()) as EscrowRecord;
 }
 
 /**
- * Execute a zero-knowledge circuit transition action.
+ * Execute a zero-knowledge circuit transition on-chain.
+ * Failures are surfaced to the caller — never replaced with local simulation.
  */
 export async function performEscrowAction(
   id: string,
-  req: EscrowActionRequest
+  req: EscrowActionRequest,
 ): Promise<EscrowActionResult> {
-  try {
-    const res = await fetch(`${API_BASE_URL}/api/escrows/${encodeURIComponent(id)}/action`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(req),
-    });
-
-    if (!res.ok) {
-      const errPayload = await res.json().catch(() => ({}));
-      throw new Error(errPayload.error || `Action error HTTP ${res.status}`);
-    }
-
-    const result: EscrowActionResult = await res.json();
-
-    // Update local cache state
-    const cached = getCachedEscrows();
-    const found = cached.find((e) => e.id === id);
-    if (found) {
-      found.state = result.newState;
-      found.stateLabel = result.newStateLabel || ESCROW_STATE_LABELS[result.newState];
-      found.updatedAt = new Date().toISOString();
-      if (result.newState === EscrowState.Funded) found.fundedAt = found.updatedAt;
-      if (result.newState === EscrowState.Delivered) found.deliveredAt = found.updatedAt;
-      if (result.newState === EscrowState.Released) found.releasedAt = found.updatedAt;
-      if (result.newState === EscrowState.Disputed) found.disputedAt = found.updatedAt;
-      if (result.newState === EscrowState.Resolved) found.resolvedAt = found.updatedAt;
-      if (result.newState === EscrowState.Cancelled) found.cancelledAt = found.updatedAt;
-      setCachedEscrows(cached);
-    }
-
-    return result;
-  } catch (err) {
-    console.warn('[Umbra-API] performEscrowAction API call failed, calculating state transition locally:', err);
-    let nextState = EscrowState.Funded;
-    if (req.action === 'confirmDelivery') nextState = EscrowState.Delivered;
-    if (req.action === 'release') nextState = EscrowState.Released;
-    if (req.action === 'cancel') nextState = EscrowState.Cancelled;
-    if (req.action === 'dispute') nextState = EscrowState.Disputed;
-    if (req.action === 'resolve') nextState = EscrowState.Resolved;
-
-    const result: EscrowActionResult = {
-      success: true,
-      transactionHash: `0x${Math.random().toString(16).slice(2)}${Math.random().toString(16).slice(2)}`,
-      newState: nextState,
-      newStateLabel: ESCROW_STATE_LABELS[nextState],
-    };
-
-    const cached = getCachedEscrows();
-    const found = cached.find((e) => e.id === id);
-    if (found) {
-      found.state = nextState;
-      found.stateLabel = ESCROW_STATE_LABELS[nextState];
-      found.updatedAt = new Date().toISOString();
-      if (nextState === EscrowState.Funded) found.fundedAt = found.updatedAt;
-      if (nextState === EscrowState.Delivered) found.deliveredAt = found.updatedAt;
-      if (nextState === EscrowState.Released) found.releasedAt = found.updatedAt;
-      setCachedEscrows(cached);
-    }
-
-    return result;
-  }
-}
-
-// ─── Helper Filters ─────────────────────────────────────────────────────────
-
-function applyClientFilter(records: EscrowRecord[], filter?: EscrowFilter): EscrowRecord[] {
-  if (!filter) return records;
-  return records.filter((item) => {
-    if (filter.state !== undefined && filter.state !== 'all') {
-      if (item.state !== filter.state) return false;
-    }
-    if (filter.searchQuery) {
-      const q = filter.searchQuery.toLowerCase();
-      const matchId = item.id.toLowerCase().includes(q);
-      const matchCond = item.condition.toLowerCase().includes(q);
-      const matchContract = item.contractAddress.toLowerCase().includes(q);
-      if (!matchId && !matchCond && !matchContract) return false;
-    }
-    if (filter.buyerAddress && item.buyerAddress !== filter.buyerAddress) {
-      return false;
-    }
-    if (filter.sellerAddress && item.sellerAddress !== filter.sellerAddress) {
-      return false;
-    }
-    return true;
+  const res = await fetch(`${API_BASE_URL}/api/escrows/${encodeURIComponent(id)}/action`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(req),
   });
+  if (!res.ok) throw await readError(res, 'Circuit transition failed');
+  return (await res.json()) as EscrowActionResult;
 }

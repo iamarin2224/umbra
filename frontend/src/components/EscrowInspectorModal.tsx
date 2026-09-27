@@ -58,6 +58,7 @@ export const EscrowInspectorModal: React.FC<EscrowInspectorModalProps> = ({
         return [
           { label: 'Confirm Delivery', action: 'confirmDelivery', color: 'var(--amethyst)' },
           { label: 'Initiate Dispute', action: 'dispute', color: 'var(--crimson)' },
+          { label: 'Cancel & Refund Deposit', action: 'cancel', color: 'var(--crimson)' },
         ];
       case EscrowState.Delivered:
         return [

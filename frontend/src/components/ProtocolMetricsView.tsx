@@ -58,16 +58,35 @@ export const ProtocolMetricsView: React.FC<ProtocolMetricsViewProps> = ({ stats,
                 borderRadius: 6,
               }}
             >
-              {isBackendOnline ? '100% ONLINE' : 'SIMULATED MOCK'}
+              {isBackendOnline ? '100% ONLINE' : 'API OFFLINE'}
             </span>
           </div>
 
           <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '16px' }}>
             {[
-              { label: 'Prover Synthesis Latency', val: '1.42s', pct: '65%' },
-              { label: 'Compact Test Verification', val: '100 / 100', pct: '100%', color: 'var(--emerald)' },
-              { label: 'Constraint Gate Count', val: '4,096 gates', pct: '45%' },
-              { label: 'Proof Server Port', val: ':6300', pct: '100%', color: 'var(--cyan)' },
+              {
+                label: 'API Link',
+                val: isBackendOnline ? 'ONLINE' : 'DOWN',
+                pct: isBackendOnline ? '100%' : '0%',
+                color: isBackendOnline ? 'var(--emerald)' : 'var(--crimson)',
+              },
+              {
+                label: 'Escrow Instances Indexed',
+                val: stats.totalCount.toString(),
+                pct: stats.totalCount > 0 ? '100%' : '0%',
+              },
+              {
+                label: 'Settled Contracts',
+                val: stats.completedCount.toString(),
+                pct: `${stats.totalCount > 0 ? Math.round((stats.completedCount / stats.totalCount) * 100) : 0}%`,
+                color: 'var(--emerald)',
+              },
+              {
+                label: 'Disputed Contracts',
+                val: stats.disputedCount.toString(),
+                pct: `${stats.totalCount > 0 ? Math.round((stats.disputedCount / stats.totalCount) * 100) : 0}%`,
+                color: stats.disputedCount > 0 ? 'var(--crimson)' : 'var(--text-hero)',
+              },
             ].map((meter, i) => (
               <div
                 key={i}
@@ -194,7 +213,7 @@ export const ProtocolMetricsView: React.FC<ProtocolMetricsViewProps> = ({ stats,
                 color: isBackendOnline ? 'var(--emerald)' : 'var(--gold)',
               }}
             >
-              {isBackendOnline ? 'Preprod Sync Active' : 'Local Standalone'}
+              {isBackendOnline ? 'Preprod Sync Active' : 'API Unreachable'}
             </span>
           </div>
         </SpotlightCard>
