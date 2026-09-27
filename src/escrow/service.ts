@@ -1,155 +1,136 @@
 import type {
     CreateEscrowRequest,
+    EscrowActionParams,
+    EscrowActionType,
     EscrowActionResult,
     EscrowDeploymentResult,
+    EscrowEvent,
     EscrowRecord,
     EscrowState,
 } from "./types";
 import { EscrowState as State, ESCROW_STATE_LABELS } from "./types";
-import {
-    createEscrowWitnesses,
-    generateSalt,
-    generateSecret,
-} from "./witnesses";
-import {
-    clearMemoryState,
-    createInitialPrivateState,
-    loadPrivateStateMemory,
-    removePrivateStateMemory,
-    savePrivateStateMemory,
-    updatePrivateState,
-} from "./private-state";
-import { isValidTransition } from "./contract";
-import {
-    verifyAmount,
-    verifyCondition,
-    computeEscrowHash,
-} from "./verification";
-import { getDeployedContractAddress } from "../network";
-import { env } from "../env";
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { generateSalt, generateSecret } from "./witnesses";
+import { isValidTransition, type CircuitName } from "./contract";
+import { verifyAmount, verifyCondition, computeEscrowHash } from "./verification";
+import { createMidnightChainGateway, type ChainGateway } from "./gateway";
+import { createSupabaseEscrowRepository, type EscrowRepository } from "./repository";
 
-// ─── Umbra Supabase Client Singleton ─────────────────────────────────────────
-// Falls back to in-memory store when Supabase environment credentials are not present.
+// ─── Umbra Escrow Service ───────────────────────────────────────────────────
+// Real orchestration layer: validates domain rules, executes ZK circuits on
+// Midnight through the chain gateway, and persists every state change plus an
+// append-only event log to Supabase. There is no in-memory store and no
+// simulated transaction path — if the network or database is unreachable the
+// call fails loudly.
 
-let _supabaseClientInstance: SupabaseClient | null = null;
-
-function getSupabase(): SupabaseClient | null {
-    if (_supabaseClientInstance) return _supabaseClientInstance;
-    if (env.SUPABASE_URL && env.SUPABASE_ANON_KEY) {
-        _supabaseClientInstance = createClient(env.SUPABASE_URL, env.SUPABASE_ANON_KEY);
-        return _supabaseClientInstance;
+export class EscrowError extends Error {
+    constructor(
+        message: string,
+        readonly statusCode: number = 400,
+    ) {
+        super(message);
+        this.name = "EscrowError";
     }
-    return null;
 }
 
-// ─── In-Memory Escrow Cache Store ───────────────────────────────────────────
-
-const inMemoryEscrowStore = new Map<string, EscrowRecord>();
-
-// ─── Schema ↔ Domain Entity Converters ──────────────────────────────────────
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function rowToRecord(dbRow: any): EscrowRecord {
-    return {
-        id: dbRow.id,
-        contractAddress: dbRow.contract_address,
-        buyerAddress: dbRow.buyer_address,
-        sellerAddress: dbRow.seller_address,
-        amount: dbRow.amount,
-        condition: dbRow.condition,
-        state: dbRow.state,
-        stateLabel: dbRow.state_label,
-        createdAt: dbRow.created_at,
-        updatedAt: dbRow.updated_at,
-        fundedAt: dbRow.funded_at,
-        deliveredAt: dbRow.delivered_at,
-        releasedAt: dbRow.released_at,
-        disputedAt: dbRow.disputed_at,
-        resolvedAt: dbRow.resolved_at,
-        cancelledAt: dbRow.cancelled_at,
-        transactionHash: dbRow.transaction_hash,
-        buyerSecret: dbRow.buyer_secret,
-        sellerSecret: dbRow.seller_secret,
-        salt: dbRow.salt,
-    };
+export interface EscrowServiceDeps {
+    repository: EscrowRepository;
+    gateway: ChainGateway;
 }
 
-function recordToRow(record: EscrowRecord) {
-    return {
-        id: record.id,
-        contract_address: record.contractAddress,
-        buyer_address: record.buyerAddress,
-        seller_address: record.sellerAddress,
-        amount: record.amount,
-        condition: record.condition,
-        state: record.state,
-        state_label: record.stateLabel,
-        created_at: record.createdAt,
-        updated_at: record.updatedAt,
-        funded_at: record.fundedAt,
-        delivered_at: record.deliveredAt,
-        released_at: record.releasedAt,
-        disputed_at: record.disputedAt,
-        resolved_at: record.resolvedAt,
-        cancelled_at: record.cancelledAt,
-        transaction_hash: record.transactionHash,
-        buyer_secret: record.buyerSecret,
-        seller_secret: record.sellerSecret,
-        salt: record.salt,
-    };
-}
-
-// ─── Escrow Deployment Engine ───────────────────────────────────────────────
+let _deps: EscrowServiceDeps | null = null;
 
 /**
- * Creates and deploys a new escrow contract instance offline/mock.
+ * Overrides service dependencies. Intended for tests, which inject test
+ * doubles that live under tests/ — production code always resolves the real
+ * Supabase repository and Midnight chain gateway.
  */
+export function configureEscrowService(deps: EscrowServiceDeps): void {
+    _deps = deps;
+}
+
+export function getEscrowServiceDeps(): EscrowServiceDeps {
+    if (!_deps) {
+        _deps = {
+            repository: createSupabaseEscrowRepository(),
+            gateway: createMidnightChainGateway(),
+        };
+    }
+    return _deps;
+}
+
+export function resetEscrowService(): void {
+    _deps = null;
+}
+
+// ─── State Machine Binding ──────────────────────────────────────────────────
+
+const ACTION_TARGET_STATE: Record<EscrowActionType, EscrowState> = {
+    deposit: State.Funded,
+    confirmDelivery: State.Delivered,
+    release: State.Released,
+    dispute: State.Disputed,
+    resolve: State.Resolved,
+    cancel: State.Cancelled,
+};
+
+const SELLER_ONLY_ACTIONS: ReadonlySet<EscrowActionType> = new Set([
+    "confirmDelivery",
+    "resolve",
+]);
+
+export function privateStateIdFor(escrowId: string): string {
+    return `umbra-escrow:${escrowId}`;
+}
+
+// ─── Deployment ─────────────────────────────────────────────────────────────
+
 export async function deployEscrow(
     request: CreateEscrowRequest,
-    _provider: MidnightProvider,
 ): Promise<EscrowDeploymentResult & { escrowId: string }> {
-    // Parameter validation
     const amountVerification = verifyAmount(request.amount);
     if (!amountVerification.valid) {
-        throw new Error(`Invalid amount: ${amountVerification.reason}`);
+        throw new EscrowError(`Invalid amount: ${amountVerification.reason}`);
     }
 
     const conditionVerification = verifyCondition(request.condition);
     if (!conditionVerification.valid) {
-        throw new Error(`Invalid condition: ${conditionVerification.reason}`);
+        throw new EscrowError(`Invalid condition: ${conditionVerification.reason}`);
     }
 
-    // Generate cryptographic secrets
+    if (!request.buyerAddress?.trim()) {
+        throw new EscrowError("Buyer address is required");
+    }
+    if (!request.sellerAddress?.trim()) {
+        throw new EscrowError("Seller address is required");
+    }
+
+    const { repository, gateway } = getEscrowServiceDeps();
+
     const buyerSecret = generateSecret();
     const sellerSecret = generateSecret();
     const salt = generateSalt();
 
-    // Create ZK witness bindings
-    const _witnessProviders = createEscrowWitnesses(
-        buyerSecret,
-        sellerSecret,
-        request.amount,
-        request.condition,
-    );
-
-    // Derive mock contract address and transaction hash
-    const contractAddress = getDeployedContractAddress() || `mn_contract_${Date.now().toString(16)}`;
-    const transactionHash = `mn_tx_${Date.now().toString(16)}`;
-
-    // Generate unique escrow identifier
+    const now = new Date().toISOString();
     const escrowId = computeEscrowHash({
         buyerAddress: request.buyerAddress,
         sellerAddress: request.sellerAddress,
         amount: request.amount,
         condition: request.condition,
-        timestamp: new Date().toISOString(),
+        timestamp: now,
+    });
+    const privateStateId = privateStateIdFor(escrowId);
+
+    const deployResult = await gateway.deployEscrow({
+        buyerSecret,
+        sellerSecret,
+        amount: request.amount,
+        condition: request.condition,
+        privateStateId,
     });
 
-    const now = new Date().toISOString();
     const record: EscrowRecord = {
         id: escrowId,
-        contractAddress,
+        contractAddress: deployResult.contractAddress,
         buyerAddress: request.buyerAddress,
         sellerAddress: request.sellerAddress,
         amount: request.amount,
@@ -164,318 +145,231 @@ export async function deployEscrow(
         disputedAt: null,
         resolvedAt: null,
         cancelledAt: null,
-        transactionHash,
+        transactionHash: deployResult.transactionHash,
+        depositCoinIndex: null,
         buyerSecret,
         sellerSecret,
         salt,
     };
 
-    inMemoryEscrowStore.set(escrowId, record);
-
-    // Sync to Supabase if available
-    const supabase = getSupabase();
-    if (supabase) {
-        const { error: insertErr } = await supabase.from("escrows").insert(recordToRow(record));
-        if (insertErr) {
-            console.error("Supabase insert failed:", insertErr.message);
-        }
-    }
-
-    // Persist private state locally
-    const privateState = createInitialPrivateState({
-        buyerSecret,
-        sellerSecret,
-        amount: request.amount,
-        condition: request.condition,
-        salt,
-        contractAddress,
-        buyerAddress: request.buyerAddress,
-        sellerAddress: request.sellerAddress,
+    await repository.insert(record);
+    await repository.insertEvent({
+        escrowId,
+        action: "created",
+        fromState: null,
+        toState: State.Created,
+        transactionHash: deployResult.transactionHash,
+        description: `Escrow deployed on-chain at ${deployResult.contractAddress}`,
     });
-    savePrivateStateMemory(escrowId, privateState);
 
     return {
         escrowId,
-        contractAddress,
-        transactionHash,
-        buyerCommitment: `commitment_${buyerSecret.slice(0, 16)}`,
-        sellerCommitment: `commitment_${sellerSecret.slice(0, 16)}`,
-        amountCommitment: `commitment_${request.amount.slice(0, 16)}`,
-        conditionCommitment: `commitment_${request.condition.slice(0, 16)}`,
+        contractAddress: deployResult.contractAddress,
+        transactionHash: deployResult.transactionHash,
     };
 }
 
-// ─── Escrow Transition Actions ──────────────────────────────────────────────
+// ─── Circuit Transitions ────────────────────────────────────────────────────
 
-export async function depositFunds(
+export async function executeEscrowAction(
     escrowId: string,
-    secret: string,
-    provider: MidnightProvider,
+    action: EscrowActionType,
+    params: EscrowActionParams,
 ): Promise<EscrowActionResult> {
-    return performEscrowAction(escrowId, "deposit", secret, provider);
-}
+    const { repository, gateway } = getEscrowServiceDeps();
 
-export async function confirmDelivery(
-    escrowId: string,
-    secret: string,
-    provider: MidnightProvider,
-): Promise<EscrowActionResult> {
-    return performEscrowAction(escrowId, "confirmDelivery", secret, provider);
-}
-
-export async function releaseFunds(
-    escrowId: string,
-    secret: string,
-    provider: MidnightProvider,
-): Promise<EscrowActionResult> {
-    return performEscrowAction(escrowId, "release", secret, provider);
-}
-
-export async function raiseDispute(
-    escrowId: string,
-    secret: string,
-    provider: MidnightProvider,
-): Promise<EscrowActionResult> {
-    return performEscrowAction(escrowId, "dispute", secret, provider);
-}
-
-export async function resolveDispute(
-    escrowId: string,
-    secret: string,
-    provider: MidnightProvider,
-): Promise<EscrowActionResult> {
-    return performEscrowAction(escrowId, "resolve", secret, provider);
-}
-
-export async function cancelEscrow(
-    escrowId: string,
-    secret: string,
-    provider: MidnightProvider,
-): Promise<EscrowActionResult> {
-    return performEscrowAction(escrowId, "cancel", secret, provider);
-}
-
-// ─── Internal Action Execution Core ─────────────────────────────────────────
-
-async function performEscrowAction(
-    escrowId: string,
-    action: string,
-    secret: string,
-    _provider: MidnightProvider,
-): Promise<EscrowActionResult> {
-    const existingRecord = inMemoryEscrowStore.get(escrowId);
-    if (!existingRecord) {
-        return {
-            success: false,
-            transactionHash: "",
-            blockHeight: 0,
-            newState: State.Created,
-            error: `Escrow ${escrowId} not found`,
-        };
+    const record = await repository.getById(escrowId);
+    if (!record) {
+        throw new EscrowError(`Escrow ${escrowId} not found`, 404);
     }
 
-    // Transition matrix check
-    if (!isValidTransition(existingRecord.state, action as any)) {
-        return {
-            success: false,
-            transactionHash: "",
-            blockHeight: 0,
-            newState: existingRecord.state,
-            error: `Cannot perform ${action} in state ${ESCROW_STATE_LABELS[existingRecord.state]}`,
-        };
+    if (!isValidTransition(record.state, action as CircuitName)) {
+        throw new EscrowError(
+            `Cannot perform ${action} in state ${ESCROW_STATE_LABELS[record.state]}`,
+        );
     }
 
-    // Party authorization check
-    const isBuyerAuth = secret === existingRecord.buyerSecret;
-    const isSellerAuth = secret === existingRecord.sellerSecret;
+    const sellerOnly = SELLER_ONLY_ACTIONS.has(action);
+    const expectedSecret = sellerOnly ? record.sellerSecret : record.buyerSecret;
+    if (!params.secret || params.secret !== expectedSecret) {
+        throw new EscrowError(
+            sellerOnly
+                ? "Only the seller can perform this action"
+                : "Invalid secret for this escrow",
+        );
+    }
 
-    if (action === "confirmDelivery" || action === "resolve") {
-        if (!isSellerAuth) {
-            return {
-                success: false,
-                transactionHash: "",
-                blockHeight: 0,
-                newState: existingRecord.state,
-                error: "Only the seller can perform this action",
-            };
+    const args = buildCircuitArgs(action, params, record);
+    const fromState = record.state;
+    const newState = ACTION_TARGET_STATE[action];
+
+    const callResult = await gateway.callCircuit({
+        contractAddress: record.contractAddress,
+        circuit: action,
+        args,
+        privateStateId: privateStateIdFor(escrowId),
+    });
+
+    let warning: string | undefined;
+
+    if (action === "deposit") {
+        const coinIndex = await lookupCoinIndexWithRetry(
+            gateway,
+            callResult.transactionHash,
+            record.contractAddress,
+        );
+        if (coinIndex !== null) {
+            record.depositCoinIndex = coinIndex;
+        } else {
+            warning =
+                "Deposit settled on-chain but its coin mt_index could not be indexed yet; " +
+                "release/cancel will fail until it is available.";
         }
-    } else if (!isBuyerAuth && !isSellerAuth) {
-        return {
-            success: false,
-            transactionHash: "",
-            blockHeight: 0,
-            newState: existingRecord.state,
-            error: "Invalid secret for this escrow",
-        };
     }
 
-    const stateTransitions: Record<string, EscrowState> = {
-        deposit: State.Funded,
-        confirmDelivery: State.Delivered,
-        release: State.Released,
-        dispute: State.Disputed,
-        resolve: State.Resolved,
-        cancel: State.Cancelled,
-    };
-
-    const targetState = stateTransitions[action];
-    if (targetState === undefined) {
-        return {
-            success: false,
-            transactionHash: "",
-            blockHeight: 0,
-            newState: existingRecord.state,
-            error: `Unknown action: ${action}`,
-        };
-    }
-
-    const txHash = `mn_tx_${action}_${Date.now().toString(16)}`;
-    const mockBlockHeight = Math.floor(Math.random() * 1000000);
     const timestamp = new Date().toISOString();
-
-    const updatedRecord: EscrowRecord = {
-        ...existingRecord,
-        state: targetState,
-        stateLabel: ESCROW_STATE_LABELS[targetState],
-        updatedAt: timestamp,
-        ...(action === "deposit" && { fundedAt: timestamp }),
-        ...(action === "confirmDelivery" && { deliveredAt: timestamp }),
-        ...(action === "release" && { releasedAt: timestamp }),
-        ...(action === "dispute" && { disputedAt: timestamp }),
-        ...(action === "resolve" && { resolvedAt: timestamp }),
-        ...(action === "cancel" && { cancelledAt: timestamp }),
-        transactionHash: txHash,
-    };
-
-    inMemoryEscrowStore.set(escrowId, updatedRecord);
-
-    const supabase = getSupabase();
-    if (supabase) {
-        const { error: updateErr } = await supabase
-            .from("escrows")
-            .update(recordToRow(updatedRecord))
-            .eq("id", escrowId);
-        if (updateErr) {
-            console.error("Supabase update failed:", updateErr.message);
-        }
+    record.state = newState;
+    record.stateLabel = ESCROW_STATE_LABELS[newState];
+    record.updatedAt = timestamp;
+    record.transactionHash = callResult.transactionHash;
+    switch (action) {
+        case "deposit":
+            record.fundedAt = timestamp;
+            break;
+        case "confirmDelivery":
+            record.deliveredAt = timestamp;
+            break;
+        case "release":
+            record.releasedAt = timestamp;
+            break;
+        case "dispute":
+            record.disputedAt = timestamp;
+            break;
+        case "resolve":
+            record.resolvedAt = timestamp;
+            break;
+        case "cancel":
+            record.cancelledAt = timestamp;
+            break;
     }
 
-    const currentPrivateState = loadPrivateStateMemory(escrowId);
-    if (currentPrivateState) {
-        const updatedPrivateState = updatePrivateState(currentPrivateState, targetState);
-        savePrivateStateMemory(escrowId, updatedPrivateState);
-    }
+    await repository.update(record);
+    await repository.insertEvent({
+        escrowId,
+        action,
+        fromState,
+        toState: newState,
+        transactionHash: callResult.transactionHash,
+        blockHeight: callResult.blockHeight,
+        description: `Executed ZK circuit '${action}': ${ESCROW_STATE_LABELS[fromState]} → ${ESCROW_STATE_LABELS[newState]}`,
+    });
 
     return {
         success: true,
-        transactionHash: txHash,
-        blockHeight: mockBlockHeight,
-        newState: targetState,
+        transactionHash: callResult.transactionHash,
+        blockHeight: callResult.blockHeight,
+        newState,
+        warning,
     };
 }
 
-// ─── Query Handlers ─────────────────────────────────────────────────────────
-
-export function getEscrow(escrowId: string): EscrowRecord | null {
-    return inMemoryEscrowStore.get(escrowId) ?? null;
+function buildCircuitArgs(
+    action: EscrowActionType,
+    params: EscrowActionParams,
+    record: EscrowRecord,
+): unknown[] {
+    switch (action) {
+        case "deposit": {
+            const value = params.value ?? record.amount;
+            try {
+                return [BigInt(value)];
+            } catch {
+                throw new EscrowError(`Invalid deposit value: ${value}`);
+            }
+        }
+        case "release": {
+            if (!params.sellerPubKey) {
+                throw new EscrowError("Missing sellerPubKey for release");
+            }
+            if (!record.depositCoinIndex) {
+                throw new EscrowError(
+                    "Deposit coin index unavailable — cannot release until the deposit coin is indexed",
+                );
+            }
+            return [
+                { bytes: Uint8Array.from(Buffer.from(params.sellerPubKey, "hex")) },
+                BigInt(record.depositCoinIndex),
+            ];
+        }
+        case "cancel": {
+            // Contract refunds the deposit when cancelling from Funded, which
+            // requires the deposit coin's merkle index to reconstruct the coin.
+            if (record.state === State.Funded) {
+                if (!record.depositCoinIndex) {
+                    throw new EscrowError(
+                        "Deposit coin index unavailable — cannot cancel with refund until the deposit coin is indexed",
+                    );
+                }
+                return [BigInt(record.depositCoinIndex)];
+            }
+            return [0n];
+        }
+        default:
+            return [];
+    }
 }
 
-export async function getEscrowAsync(escrowId: string): Promise<EscrowRecord | null> {
-    const cached = inMemoryEscrowStore.get(escrowId);
-    if (cached) return cached;
-
-    const supabase = getSupabase();
-    if (supabase) {
-        const { data, error } = await supabase.from("escrows").select("*").eq("id", escrowId).single();
-        if (error || !data) return null;
-        return rowToRecord(data);
+async function lookupCoinIndexWithRetry(
+    gateway: ChainGateway,
+    txHash: string,
+    contractAddress: string,
+    attempts = 3,
+    delayMs = 2000,
+): Promise<string | null> {
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+        try {
+            const index = await gateway.getCoinMtIndex(txHash, contractAddress);
+            return index.toString();
+        } catch (err) {
+            if (attempt === attempts) {
+                console.error(
+                    `[Umbra-Service] Coin mt_index lookup failed for tx ${txHash}:`,
+                    err instanceof Error ? err.message : err,
+                );
+                return null;
+            }
+            await new Promise((resolve) => setTimeout(resolve, delayMs));
+        }
     }
     return null;
 }
 
-export function listEscrows(filters?: {
-    state?: EscrowState;
-    buyerAddress?: string;
-    sellerAddress?: string;
-}): EscrowRecord[] {
-    let resultList = Array.from(inMemoryEscrowStore.values());
+// ─── Queries ────────────────────────────────────────────────────────────────
 
-    if (filters?.state !== undefined) {
-        resultList = resultList.filter((r) => r.state === filters.state);
-    }
-    if (filters?.buyerAddress) {
-        resultList = resultList.filter((r) => r.buyerAddress === filters.buyerAddress);
-    }
-    if (filters?.sellerAddress) {
-        resultList = resultList.filter((r) => r.sellerAddress === filters.sellerAddress);
-    }
-
-    return resultList.sort(
-        (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
-    );
+export async function getEscrow(escrowId: string): Promise<EscrowRecord | null> {
+    return getEscrowServiceDeps().repository.getById(escrowId);
 }
 
-export async function listEscrowsAsync(filters?: {
+export async function getEscrowOrThrow(escrowId: string): Promise<EscrowRecord> {
+    const record = await getEscrow(escrowId);
+    if (!record) {
+        throw new EscrowError(`Escrow ${escrowId} not found`, 404);
+    }
+    return record;
+}
+
+export async function listEscrows(filters?: {
     state?: EscrowState;
     buyerAddress?: string;
     sellerAddress?: string;
 }): Promise<EscrowRecord[]> {
-    const supabase = getSupabase();
-    if (supabase) {
-        let query = supabase.from("escrows").select("*");
-        if (filters?.state !== undefined) {
-            query = query.eq("state", filters.state);
-        }
-        if (filters?.buyerAddress) {
-            query = query.eq("buyer_address", filters.buyerAddress);
-        }
-        if (filters?.sellerAddress) {
-            query = query.eq("seller_address", filters.sellerAddress);
-        }
-        const { data, error } = await query.order("created_at", { ascending: false });
-        if (error) {
-            console.error("Supabase query failed:", error.message);
-            return listEscrows(filters);
-        }
-        return (data || []).map(rowToRecord);
-    }
-    return listEscrows(filters);
+    return getEscrowServiceDeps().repository.list(filters);
 }
 
-export function getEscrowPrivateState(escrowId: string) {
-    return loadPrivateStateMemory(escrowId);
+export async function listEvents(escrowId?: string): Promise<EscrowEvent[]> {
+    return getEscrowServiceDeps().repository.listEvents(escrowId);
 }
 
-export function removeEscrow(escrowId: string): boolean {
-    const isDeleted = inMemoryEscrowStore.delete(escrowId);
-    removePrivateStateMemory(escrowId);
-
-    const supabase = getSupabase();
-    if (supabase) {
-        supabase.from("escrows").delete().eq("id", escrowId).then(({ error }) => {
-            if (error) console.error("Supabase delete failed:", error.message);
-        });
-    }
-
-    return isDeleted;
-}
-
-export function clearAllEscrows(): void {
-    inMemoryEscrowStore.clear();
-    clearMemoryState();
-
-    const supabase = getSupabase();
-    if (supabase) {
-        supabase.from("escrows").delete().neq("id", "").then(({ error }) => {
-            if (error) console.error("Supabase clear failed:", error.message);
-        });
-    }
-}
-
-// ─── Provider Interface ─────────────────────────────────────────────────────
-
-interface MidnightProvider {
-    isConnected: boolean;
-    address?: string;
-    sign?: (data: string) => Promise<string>;
+export async function removeEscrow(escrowId: string): Promise<void> {
+    await getEscrowServiceDeps().repository.remove(escrowId);
 }

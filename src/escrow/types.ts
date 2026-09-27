@@ -55,6 +55,7 @@ export interface EscrowRecord {
     resolvedAt: string | null;
     cancelledAt: string | null;
     transactionHash: string;
+    depositCoinIndex?: string | null;
     buyerSecret: string;
     sellerSecret: string;
     salt: string;
@@ -63,10 +64,24 @@ export interface EscrowRecord {
 export interface EscrowDeploymentResult {
     contractAddress: string;
     transactionHash: string;
-    buyerCommitment: string;
-    sellerCommitment: string;
-    amountCommitment: string;
-    conditionCommitment: string;
+    buyerCommitment?: string;
+    sellerCommitment?: string;
+    amountCommitment?: string;
+    conditionCommitment?: string;
+}
+
+export type EscrowActionType =
+    | "deposit"
+    | "confirmDelivery"
+    | "release"
+    | "cancel"
+    | "dispute"
+    | "resolve";
+
+export interface EscrowActionParams {
+    secret: string;
+    value?: string;
+    sellerPubKey?: string;
 }
 
 export interface EscrowActionResult {
@@ -75,6 +90,21 @@ export interface EscrowActionResult {
     blockHeight: number;
     newState: EscrowState;
     error?: string;
+    warning?: string;
+}
+
+// ─── Persisted On-Chain Event Log ───────────────────────────────────────────
+
+export interface EscrowEvent {
+    id?: number;
+    escrowId: string;
+    action: EscrowActionType | "created";
+    fromState: EscrowState | null;
+    toState: EscrowState;
+    transactionHash: string;
+    blockHeight?: number | null;
+    description: string;
+    createdAt?: string;
 }
 
 // ─── Witness Bindings ───────────────────────────────────────────────────────

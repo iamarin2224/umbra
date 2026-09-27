@@ -43,6 +43,14 @@ describe("Umbra Escrow Verification Suite", () => {
             expect(result.valid).toBe(true);
         });
 
+        it("should permit Funded -> Cancelled (deposit refund path)", () => {
+            const result = verifyStateTransition(
+                EscrowState.Funded,
+                EscrowState.Cancelled,
+            );
+            expect(result.valid).toBe(true);
+        });
+
         it("should permit Delivered -> Released", () => {
             const result = verifyStateTransition(
                 EscrowState.Delivered,

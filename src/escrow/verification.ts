@@ -14,7 +14,7 @@ export function verifyStateTransition(
 ): VerificationResult {
     const transitionGraph: Record<EscrowState, EscrowState[]> = {
         [State.Created]: [State.Funded, State.Cancelled],
-        [State.Funded]: [State.Delivered, State.Disputed],
+        [State.Funded]: [State.Delivered, State.Disputed, State.Cancelled],
         [State.Delivered]: [State.Released, State.Disputed],
         [State.Released]: [],
         [State.Disputed]: [State.Resolved],

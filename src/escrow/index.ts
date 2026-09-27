@@ -10,6 +10,9 @@ export {
     type EscrowRecord,
     type EscrowDeploymentResult,
     type EscrowActionResult,
+    type EscrowActionType,
+    type EscrowActionParams,
+    type EscrowEvent,
     type EscrowWitnesses,
     type CreateEscrowRequest,
     type EscrowActionRequest,
@@ -58,22 +61,37 @@ export {
     type CircuitName,
 } from "./contract";
 
+// ─── Chain Gateway & Repository ─────────────────────────────────────────────
+export {
+    type ChainGateway,
+    type ChainGatewayDeployParams,
+    type ChainGatewayDeployResult,
+    type ChainGatewayCallParams,
+    type ChainGatewayCallResult,
+    createMidnightChainGateway,
+} from "./gateway";
+
+export {
+    type EscrowRepository,
+    createSupabaseEscrowRepository,
+    isSupabaseConfigured,
+} from "./repository";
+
 // ─── Service ────────────────────────────────────────────────────────────────
 export {
+    EscrowError,
+    type EscrowServiceDeps,
+    configureEscrowService,
+    getEscrowServiceDeps,
+    resetEscrowService,
+    privateStateIdFor,
     deployEscrow,
-    depositFunds,
-    confirmDelivery,
-    releaseFunds,
-    raiseDispute,
-    resolveDispute,
-    cancelEscrow,
+    executeEscrowAction,
     getEscrow,
-    getEscrowAsync,
+    getEscrowOrThrow,
     listEscrows,
-    listEscrowsAsync,
-    getEscrowPrivateState,
+    listEvents,
     removeEscrow,
-    clearAllEscrows,
 } from "./service";
 
 // ─── Verification ───────────────────────────────────────────────────────────

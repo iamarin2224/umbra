@@ -2,16 +2,31 @@ import type { EscrowWitnesses } from "./types";
 
 // ─── Umbra Escrow Witness Providers ─────────────────────────────────────────
 // Bridges local private state to the Midnight Compact ZK circuit witnesses.
-// Normalizes values to 32-byte hex representations for cryptographic commitment generation.
+// ALL witness values use one canonical encoding: UTF-8 bytes zero-padded or
+// truncated to 32 bytes (encodeStringToBytes32). This is the same encoding
+// used by scripts/deploy.ts and src/midnight-client.ts when constructing
+// commitments on-chain — hex-decoding is NOT used anywhere.
+
+/**
+ * Canonical witness encoding shared by every deploy and circuit-call path:
+ * UTF-8 encode the value, then copy into a zero-padded 32-byte buffer
+ * (truncating anything beyond 32 bytes).
+ */
+export function encodeStringToBytes32(textValue: string): Uint8Array {
+    const rawBytes = new TextEncoder().encode(textValue);
+    const outBuffer = new Uint8Array(32);
+    outBuffer.set(rawBytes.slice(0, 32));
+    return outBuffer;
+}
 
 /**
  * Creates witness provider closures for the ZK escrow circuits.
  *
- * @param buyerSecret - Buyer's private secret (hex string, padded/truncated to 32 bytes)
- * @param sellerSecret - Seller's private secret (hex string, padded/truncated to 32 bytes)
- * @param amount - Escrow funding amount (hex string, padded/truncated to 32 bytes)
- * @param condition - Condition hash (hex string, padded/truncated to 32 bytes)
- * @returns EscrowWitnesses provider functions
+ * @param buyerSecret - Buyer's private secret (hex string from generateSecret)
+ * @param sellerSecret - Seller's private secret (hex string from generateSecret)
+ * @param amount - Escrow funding amount
+ * @param condition - Condition text
+ * @returns EscrowWitnesses provider functions (UTF-8 bytes32 as hex strings)
  */
 export function createEscrowWitnesses(
     buyerSecret: string,
@@ -19,11 +34,8 @@ export function createEscrowWitnesses(
     amount: string,
     condition: string,
 ): EscrowWitnesses {
-    const normalizeBytes32 = (hexStr: string): string => {
-        const rawBytes = parseHexToBytes(hexStr);
-        const buffer = new Uint8Array(32);
-        buffer.set(rawBytes.slice(0, 32));
-        return formatBytesToHex(buffer);
+    const normalizeBytes32 = (textValue: string): string => {
+        return formatBytesToHex(encodeStringToBytes32(textValue));
     };
 
     return {
@@ -52,15 +64,6 @@ export function createWitnessesFromRecord(record: {
 }
 
 // ─── Byte & Hex Utilities ───────────────────────────────────────────────────
-
-function parseHexToBytes(hex: string): Uint8Array {
-    const cleaned = hex.startsWith("0x") ? hex.slice(2) : hex;
-    const byteArray = new Uint8Array(cleaned.length / 2);
-    for (let index = 0; index < cleaned.length; index += 2) {
-        byteArray[index / 2] = Number.parseInt(cleaned.substring(index, index + 2), 16);
-    }
-    return byteArray;
-}
 
 function formatBytesToHex(bytes: Uint8Array): string {
     return Array.from(bytes)

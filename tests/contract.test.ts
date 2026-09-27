@@ -47,6 +47,7 @@ describe("Umbra Contract Domain & Transition Tests", () => {
             const fundedTransitions = VALID_TRANSITIONS[EscrowState.Funded];
             expect(fundedTransitions).toContain("confirmDelivery");
             expect(fundedTransitions).toContain("dispute");
+            expect(fundedTransitions).toContain("cancel");
             expect(fundedTransitions).not.toContain("deposit");
         });
 

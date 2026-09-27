@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import path from "node:path";
 import type { EscrowState } from "./types";
 
@@ -9,7 +10,7 @@ const ARTIFACTS_BASE_DIR = path.resolve(
     "../../artifacts",
 );
 
-const ESCROW_CONTRACT_NAME = "umbra";
+const ESCROW_CONTRACT_NAME = "escrow";
 
 export interface CompiledEscrowContract {
     contract: unknown;
@@ -30,24 +31,32 @@ export interface ContractInfo {
  * Throws if artifacts are missing — ensure artifacts are synchronized or compiled.
  */
 export async function loadEscrowContract(): Promise<CompiledEscrowContract> {
-    const compactContractPath = path.join(ARTIFACTS_BASE_DIR, `${ESCROW_CONTRACT_NAME}.compact`);
-    const contractInfoPath = path.join(ARTIFACTS_BASE_DIR, `${ESCROW_CONTRACT_NAME}.json`);
+    const compiledContractPath = path.join(ARTIFACTS_BASE_DIR, "contract", "index.js");
+    const contractInfoPath = path.join(ARTIFACTS_BASE_DIR, "compiler", "contract-info.json");
 
     let loadedContract: unknown;
     let contractInfo: ContractInfo;
 
     try {
-        loadedContract = await import(compactContractPath);
+        loadedContract = await import(compiledContractPath);
     } catch {
         throw new Error(
-            `Failed to load contract artifacts from ${compactContractPath}. ` +
+            `Failed to load contract artifacts from ${compiledContractPath}. ` +
                 `Ensure contract artifacts are compiled in artifacts directory.`,
         );
     }
 
     try {
-        const infoModule = await import(contractInfoPath);
-        contractInfo = infoModule.default ?? infoModule;
+        const raw = JSON.parse(fs.readFileSync(contractInfoPath, "utf8")) as {
+            circuits?: Array<{ name: string }>;
+            ledger?: Array<{ name: string }>;
+        };
+        contractInfo = {
+            name: ESCROW_CONTRACT_NAME,
+            version: "1.0.0",
+            circuits: ["constructor", ...(raw.circuits ?? []).map((c) => c.name)],
+            ledgerFields: (raw.ledger ?? []).map((l) => l.name),
+        };
     } catch {
         // Fallback: construct info matching standard escrow circuits and ledger definitions
         contractInfo = {
@@ -70,6 +79,10 @@ export async function loadEscrowContract(): Promise<CompiledEscrowContract> {
                 "escrowState",
                 "depositCount",
                 "disputeCount",
+                "depositedCoinNonce",
+                "depositedCoinColor",
+                "depositedCoinValue",
+                "hasDeposit",
             ],
         };
     }
@@ -108,7 +121,7 @@ export const LEDGER_FIELDS = {
 
 export const VALID_TRANSITIONS: Record<EscrowState, CircuitName[]> = {
     0: ["deposit", "cancel"],           // Created -> Funded or Cancelled
-    1: ["confirmDelivery", "dispute"],  // Funded -> Delivered or Disputed
+    1: ["confirmDelivery", "dispute", "cancel"],  // Funded -> Delivered, Disputed, or Cancelled (refund deposit)
     2: ["release", "dispute"],          // Delivered -> Released or Disputed
     3: [],                              // Released (terminal state)
     4: ["resolve"],                     // Disputed -> Resolved

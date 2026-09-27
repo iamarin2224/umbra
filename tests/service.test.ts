@@ -1,661 +1,486 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import {
+    configureEscrowService,
+    resetEscrowService,
     deployEscrow,
-    depositFunds,
-    confirmDelivery,
-    releaseFunds,
-    raiseDispute,
-    resolveDispute,
-    cancelEscrow,
+    executeEscrowAction,
     getEscrow,
     listEscrows,
-    clearAllEscrows,
+    listEvents,
+    privateStateIdFor,
+    EscrowError,
 } from "../src/escrow/service";
 import { EscrowState } from "../src/escrow/types";
-import { generateSecret } from "../src/escrow/witnesses";
+import { FakeChainGateway, FakeEscrowRepository } from "./fakes";
 
-// Mock provider instance for testing
-const mockMidnightProvider = {
-    isConnected: true,
-    address: "mn_addr_preprod1234567890",
-};
+// Unit tests for the real escrow service orchestration logic.
+// The service itself has no mock code paths — these tests inject test doubles
+// for the repository and chain gateway so the domain rules can be verified
+// without a live network or database.
 
-describe("Umbra Offline Mock Escrow Service Tests", () => {
-    beforeEach(() => {
-        clearAllEscrows();
+let repository: FakeEscrowRepository;
+let gateway: FakeChainGateway;
+
+const BUYER_SECRET = "b".repeat(64);
+
+async function createEscrow(overrides?: Partial<{ buyerAddress: string; sellerAddress: string; amount: string; condition: string }>) {
+    const deployment = await deployEscrow({
+        buyerAddress: overrides?.buyerAddress ?? "mn_buyer_1",
+        sellerAddress: overrides?.sellerAddress ?? "mn_seller_1",
+        amount: overrides?.amount ?? "1000",
+        condition: overrides?.condition ?? "Deliver goods",
     });
+    const record = await getEscrow(deployment.escrowId);
+    if (!record) throw new Error("deployed escrow missing from repository");
+    return { deployment, record };
+}
 
-    afterEach(() => {
-        clearAllEscrows();
+async function deposit(escrowId: string, secret: string) {
+    return executeEscrowAction(escrowId, "deposit", { secret, value: "1000" });
+}
+
+async function confirmDelivery(escrowId: string, secret: string) {
+    return executeEscrowAction(escrowId, "confirmDelivery", { secret });
+}
+
+async function release(escrowId: string, secret: string) {
+    return executeEscrowAction(escrowId, "release", {
+        secret,
+        sellerPubKey: "deadbeef",
+    });
+}
+
+async function dispute(escrowId: string, secret: string) {
+    return executeEscrowAction(escrowId, "dispute", { secret });
+}
+
+async function resolve(escrowId: string, secret: string) {
+    return executeEscrowAction(escrowId, "resolve", { secret });
+}
+
+async function cancel(escrowId: string, secret: string) {
+    return executeEscrowAction(escrowId, "cancel", { secret });
+}
+
+describe("Umbra Escrow Service (real orchestration, injected test doubles)", () => {
+    beforeEach(() => {
+        repository = new FakeEscrowRepository();
+        gateway = new FakeChainGateway();
+        resetEscrowService();
+        configureEscrowService({ repository, gateway });
     });
 
     describe("deployEscrow", () => {
-        it("should deploy a new escrow successfully", async () => {
-            const result = await deployEscrow(
-                {
-                    buyerAddress: "mn_buyer_1",
-                    sellerAddress: "mn_seller_1",
-                    amount: "1000",
-                    condition: "Deliver 10 units of product X",
-                },
-                mockMidnightProvider as any,
-            );
+        it("deploys a new escrow through the chain gateway and persists it", async () => {
+            const result = await deployEscrow({
+                buyerAddress: "mn_buyer_1",
+                sellerAddress: "mn_seller_1",
+                amount: "1000",
+                condition: "Deliver 10 units of product X",
+            });
 
             expect(result.escrowId).toBeDefined();
             expect(result.contractAddress).toBeDefined();
             expect(result.transactionHash).toBeDefined();
-            expect(result.buyerCommitment).toBeDefined();
-            expect(result.sellerCommitment).toBeDefined();
-            expect(result.amountCommitment).toBeDefined();
-            expect(result.conditionCommitment).toBeDefined();
-        });
-
-        it("should create an escrow record in the in-memory store", async () => {
-            const result = await deployEscrow(
-                {
-                    buyerAddress: "mn_buyer_1",
-                    sellerAddress: "mn_seller_1",
-                    amount: "1000",
-                    condition: "Deliver 10 units of product X",
-                },
-                mockMidnightProvider as any,
+            expect(gateway.deployCalls).toHaveLength(1);
+            expect(gateway.deployCalls[0].privateStateId).toBe(
+                privateStateIdFor(result.escrowId),
             );
 
-            const record = getEscrow(result.escrowId);
+            const record = await getEscrow(result.escrowId);
             expect(record).not.toBeNull();
             expect(record?.state).toBe(EscrowState.Created);
             expect(record?.buyerAddress).toBe("mn_buyer_1");
             expect(record?.sellerAddress).toBe("mn_seller_1");
             expect(record?.amount).toBe("1000");
             expect(record?.condition).toBe("Deliver 10 units of product X");
+            expect(record?.transactionHash).toBe(result.transactionHash);
         });
 
-        it("should generate distinct buyer and seller secrets", async () => {
-            const result = await deployEscrow(
-                {
+        it("records a 'created' event in the event log", async () => {
+            const result = await deployEscrow({
+                buyerAddress: "mn_buyer_1",
+                sellerAddress: "mn_seller_1",
+                amount: "1000",
+                condition: "Deliver goods",
+            });
+
+            const events = await listEvents(result.escrowId);
+            expect(events).toHaveLength(1);
+            expect(events[0].action).toBe("created");
+            expect(events[0].toState).toBe(EscrowState.Created);
+            expect(events[0].transactionHash).toBe(result.transactionHash);
+        });
+
+        it("generates distinct buyer and seller secrets", async () => {
+            const { record } = await createEscrow();
+            expect(record.buyerSecret).toBeDefined();
+            expect(record.sellerSecret).toBeDefined();
+            expect(record.buyerSecret).not.toBe(record.sellerSecret);
+            expect(record.buyerSecret.length).toBe(64);
+            expect(record.sellerSecret.length).toBe(64);
+        });
+
+        it("rejects negative or non-numeric amount", async () => {
+            await expect(
+                deployEscrow({
                     buyerAddress: "mn_buyer_1",
                     sellerAddress: "mn_seller_1",
-                    amount: "1000",
-                    condition: "Deliver 10 units",
-                },
-                mockMidnightProvider as any,
-            );
-
-            const record = getEscrow(result.escrowId);
-            expect(record?.buyerSecret).toBeDefined();
-            expect(record?.sellerSecret).toBeDefined();
-            expect(record?.buyerSecret).not.toBe(record?.sellerSecret);
-            expect(record?.buyerSecret?.length).toBe(64);
-            expect(record?.sellerSecret?.length).toBe(64);
-        });
-
-        it("should reject negative or non-numeric amount", async () => {
-            await expect(
-                deployEscrow(
-                    {
-                        buyerAddress: "mn_buyer_1",
-                        sellerAddress: "mn_seller_1",
-                        amount: "-100",
-                        condition: "Deliver goods",
-                    },
-                    mockMidnightProvider as any,
-                ),
+                    amount: "-100",
+                    condition: "Deliver goods",
+                }),
             ).rejects.toThrow("Invalid amount");
         });
 
-        it("should reject empty condition string", async () => {
+        it("rejects empty condition string", async () => {
             await expect(
-                deployEscrow(
-                    {
-                        buyerAddress: "mn_buyer_1",
-                        sellerAddress: "mn_seller_1",
-                        amount: "1000",
-                        condition: "",
-                    },
-                    mockMidnightProvider as any,
-                ),
+                deployEscrow({
+                    buyerAddress: "mn_buyer_1",
+                    sellerAddress: "mn_seller_1",
+                    amount: "1000",
+                    condition: "",
+                }),
             ).rejects.toThrow("Invalid condition");
+        });
+
+        it("rejects missing buyer address", async () => {
+            await expect(
+                deployEscrow({
+                    buyerAddress: "",
+                    sellerAddress: "mn_seller_1",
+                    amount: "1000",
+                    condition: "Deliver goods",
+                }),
+            ).rejects.toThrow("Buyer address is required");
+        });
+
+        it("does not create any record when validation fails", async () => {
+            await expect(
+                deployEscrow({
+                    buyerAddress: "mn_buyer_1",
+                    sellerAddress: "mn_seller_1",
+                    amount: "NaN",
+                    condition: "Deliver goods",
+                }),
+            ).rejects.toThrow("Invalid amount");
+            expect(await listEscrows()).toHaveLength(0);
+            expect(gateway.deployCalls).toHaveLength(0);
         });
     });
 
-    describe("depositFunds", () => {
-        it("should deposit funds and transition to Funded state", async () => {
-            const deployResult = await deployEscrow(
-                {
-                    buyerAddress: "mn_buyer_1",
-                    sellerAddress: "mn_seller_1",
-                    amount: "1000",
-                    condition: "Deliver goods",
-                },
-                mockMidnightProvider as any,
-            );
+    describe("deposit", () => {
+        it("deposits funds, transitions to Funded, and indexes the deposit coin", async () => {
+            const { record } = await createEscrow();
 
-            const record = getEscrow(deployResult.escrowId);
-            const result = await depositFunds(
-                deployResult.escrowId,
-                record!.buyerSecret,
-                mockMidnightProvider as any,
-            );
+            const result = await deposit(record.id, record.buyerSecret);
 
             expect(result.success).toBe(true);
             expect(result.newState).toBe(EscrowState.Funded);
-            expect(result.transactionHash).toBeDefined();
+            expect(result.transactionHash).toBeTruthy();
 
-            const updatedRecord = getEscrow(deployResult.escrowId);
-            expect(updatedRecord?.state).toBe(EscrowState.Funded);
-            expect(updatedRecord?.fundedAt).toBeDefined();
+            const updated = await getEscrow(record.id);
+            expect(updated?.state).toBe(EscrowState.Funded);
+            expect(updated?.fundedAt).toBeDefined();
+            expect(updated?.depositCoinIndex).toBe("42");
+
+            const events = await listEvents(record.id);
+            expect(events[0].action).toBe("deposit");
+            expect(events[0].fromState).toBe(EscrowState.Created);
+            expect(events[0].toState).toBe(EscrowState.Funded);
         });
 
-        it("should reject deposit from unauthorized secret", async () => {
-            const deployResult = await deployEscrow(
-                {
-                    buyerAddress: "mn_buyer_1",
-                    sellerAddress: "mn_seller_1",
-                    amount: "1000",
-                    condition: "Deliver goods",
-                },
-                mockMidnightProvider as any,
-            );
+        it("passes the deposit value and per-escrow private state id to the circuit", async () => {
+            const { record } = await createEscrow();
+            await deposit(record.id, record.buyerSecret);
 
-            const result = await depositFunds(
-                deployResult.escrowId,
-                "invalid_secret",
-                mockMidnightProvider as any,
-            );
-
-            expect(result.success).toBe(false);
-            expect(result.error).toContain("Invalid secret");
+            expect(gateway.callCalls[0].circuit).toBe("deposit");
+            expect(gateway.callCalls[0].args).toEqual([BigInt(1000)]);
+            expect(gateway.callCalls[0].privateStateId).toBe(privateStateIdFor(record.id));
         });
 
-        it("should return error for non-existent escrow", async () => {
-            const result = await depositFunds(
-                "nonexistent",
-                generateSecret(),
-                mockMidnightProvider as any,
+        it("rejects deposit with an unauthorized secret", async () => {
+            const { record } = await createEscrow();
+            await expect(deposit(record.id, "invalid_secret")).rejects.toThrow(
+                "Invalid secret",
             );
+        });
 
-            expect(result.success).toBe(false);
-            expect(result.error).toContain("not found");
+        it("rejects deposit with the seller secret", async () => {
+            const { record } = await createEscrow();
+            await expect(deposit(record.id, record.sellerSecret)).rejects.toThrow(
+                "Invalid secret",
+            );
+        });
+
+        it("returns not-found for a non-existent escrow", async () => {
+            await expect(deposit("nonexistent", BUYER_SECRET)).rejects.toThrow("not found");
         });
     });
 
     describe("confirmDelivery", () => {
-        it("should confirm delivery successfully by seller", async () => {
-            const deployResult = await deployEscrow(
-                {
-                    buyerAddress: "mn_buyer_1",
-                    sellerAddress: "mn_seller_1",
-                    amount: "1000",
-                    condition: "Deliver goods",
-                },
-                mockMidnightProvider as any,
-            );
+        it("confirms delivery by the seller and transitions to Delivered", async () => {
+            const { record } = await createEscrow();
+            await deposit(record.id, record.buyerSecret);
 
-            const record = getEscrow(deployResult.escrowId);
-
-            await depositFunds(
-                deployResult.escrowId,
-                record!.buyerSecret,
-                mockMidnightProvider as any,
-            );
-
-            const result = await confirmDelivery(
-                deployResult.escrowId,
-                record!.sellerSecret,
-                mockMidnightProvider as any,
-            );
+            const result = await confirmDelivery(record.id, record.sellerSecret);
 
             expect(result.success).toBe(true);
             expect(result.newState).toBe(EscrowState.Delivered);
 
-            const updatedRecord = getEscrow(deployResult.escrowId);
-            expect(updatedRecord?.state).toBe(EscrowState.Delivered);
-            expect(updatedRecord?.deliveredAt).toBeDefined();
+            const updated = await getEscrow(record.id);
+            expect(updated?.state).toBe(EscrowState.Delivered);
+            expect(updated?.deliveredAt).toBeDefined();
         });
 
-        it("should reject delivery confirmation from buyer secret", async () => {
-            const deployResult = await deployEscrow(
-                {
-                    buyerAddress: "mn_buyer_1",
-                    sellerAddress: "mn_seller_1",
-                    amount: "1000",
-                    condition: "Deliver goods",
-                },
-                mockMidnightProvider as any,
+        it("rejects delivery confirmation from the buyer secret", async () => {
+            const { record } = await createEscrow();
+            await deposit(record.id, record.buyerSecret);
+
+            await expect(confirmDelivery(record.id, record.buyerSecret)).rejects.toThrow(
+                "Only the seller",
             );
-
-            const record = getEscrow(deployResult.escrowId);
-
-            await depositFunds(
-                deployResult.escrowId,
-                record!.buyerSecret,
-                mockMidnightProvider as any,
-            );
-
-            const result = await confirmDelivery(
-                deployResult.escrowId,
-                record!.buyerSecret,
-                mockMidnightProvider as any,
-            );
-
-            expect(result.success).toBe(false);
-            expect(result.error).toContain("Only the seller");
         });
 
-        it("should reject delivery confirmation before funding", async () => {
-            const deployResult = await deployEscrow(
-                {
-                    buyerAddress: "mn_buyer_1",
-                    sellerAddress: "mn_seller_1",
-                    amount: "1000",
-                    condition: "Deliver goods",
-                },
-                mockMidnightProvider as any,
+        it("rejects delivery confirmation before funding", async () => {
+            const { record } = await createEscrow();
+            await expect(confirmDelivery(record.id, record.sellerSecret)).rejects.toThrow(
+                "Cannot perform confirmDelivery",
             );
-
-            const record = getEscrow(deployResult.escrowId);
-
-            const result = await confirmDelivery(
-                deployResult.escrowId,
-                record!.sellerSecret,
-                mockMidnightProvider as any,
-            );
-
-            expect(result.success).toBe(false);
-            expect(result.error).toContain("Cannot perform confirmDelivery");
         });
     });
 
-    describe("releaseFunds", () => {
-        it("should release funds successfully to seller", async () => {
-            const deployResult = await deployEscrow(
-                {
-                    buyerAddress: "mn_buyer_1",
-                    sellerAddress: "mn_seller_1",
-                    amount: "1000",
-                    condition: "Deliver goods",
-                },
-                mockMidnightProvider as any,
-            );
+    describe("release", () => {
+        it("releases funds to the seller and transitions to Released", async () => {
+            const { record } = await createEscrow();
+            await deposit(record.id, record.buyerSecret);
+            await confirmDelivery(record.id, record.sellerSecret);
 
-            const record = getEscrow(deployResult.escrowId);
-
-            await depositFunds(
-                deployResult.escrowId,
-                record!.buyerSecret,
-                mockMidnightProvider as any,
-            );
-
-            await confirmDelivery(
-                deployResult.escrowId,
-                record!.sellerSecret,
-                mockMidnightProvider as any,
-            );
-
-            const result = await releaseFunds(
-                deployResult.escrowId,
-                record!.buyerSecret,
-                mockMidnightProvider as any,
-            );
+            const result = await release(record.id, record.buyerSecret);
 
             expect(result.success).toBe(true);
             expect(result.newState).toBe(EscrowState.Released);
 
-            const updatedRecord = getEscrow(deployResult.escrowId);
-            expect(updatedRecord?.state).toBe(EscrowState.Released);
-            expect(updatedRecord?.releasedAt).toBeDefined();
+            const updated = await getEscrow(record.id);
+            expect(updated?.state).toBe(EscrowState.Released);
+            expect(updated?.releasedAt).toBeDefined();
+
+            const releaseCall = gateway.callCalls[gateway.callCalls.length - 1];
+            expect(releaseCall.circuit).toBe("release");
+            expect(releaseCall.args).toHaveLength(2);
+            expect(releaseCall.args[1]).toBe(BigInt(42));
         });
 
-        it("should reject release in non-delivered state", async () => {
-            const deployResult = await deployEscrow(
-                {
-                    buyerAddress: "mn_buyer_1",
-                    sellerAddress: "mn_seller_1",
-                    amount: "1000",
-                    condition: "Deliver goods",
-                },
-                mockMidnightProvider as any,
+        it("rejects release in a non-delivered state", async () => {
+            const { record } = await createEscrow();
+            await deposit(record.id, record.buyerSecret);
+
+            await expect(release(record.id, record.buyerSecret)).rejects.toThrow(
+                "Cannot perform release",
             );
+        });
 
-            const record = getEscrow(deployResult.escrowId);
+        it("rejects release when sellerPubKey is missing", async () => {
+            const { record } = await createEscrow();
+            await deposit(record.id, record.buyerSecret);
+            await confirmDelivery(record.id, record.sellerSecret);
 
-            await depositFunds(
-                deployResult.escrowId,
-                record!.buyerSecret,
-                mockMidnightProvider as any,
+            await expect(
+                executeEscrowAction(record.id, "release", { secret: record.buyerSecret }),
+            ).rejects.toThrow("Missing sellerPubKey");
+        });
+
+        it("rejects release when the deposit coin index is unavailable", async () => {
+            const { record } = await createEscrow();
+            await deposit(record.id, record.buyerSecret);
+            await confirmDelivery(record.id, record.sellerSecret);
+
+            const stored = await getEscrow(record.id);
+            await repository.update({ ...stored!, depositCoinIndex: null });
+
+            await expect(release(record.id, record.buyerSecret)).rejects.toThrow(
+                "Deposit coin index unavailable",
             );
-
-            const result = await releaseFunds(
-                deployResult.escrowId,
-                record!.buyerSecret,
-                mockMidnightProvider as any,
-            );
-
-            expect(result.success).toBe(false);
-            expect(result.error).toContain("Cannot perform release");
         });
     });
 
-    describe("raiseDispute", () => {
-        it("should raise dispute from funded state", async () => {
-            const deployResult = await deployEscrow(
-                {
-                    buyerAddress: "mn_buyer_1",
-                    sellerAddress: "mn_seller_1",
-                    amount: "1000",
-                    condition: "Deliver goods",
-                },
-                mockMidnightProvider as any,
-            );
+    describe("dispute", () => {
+        it("raises a dispute from the funded state", async () => {
+            const { record } = await createEscrow();
+            await deposit(record.id, record.buyerSecret);
 
-            const record = getEscrow(deployResult.escrowId);
-
-            await depositFunds(
-                deployResult.escrowId,
-                record!.buyerSecret,
-                mockMidnightProvider as any,
-            );
-
-            const result = await raiseDispute(
-                deployResult.escrowId,
-                record!.buyerSecret,
-                mockMidnightProvider as any,
-            );
+            const result = await dispute(record.id, record.buyerSecret);
 
             expect(result.success).toBe(true);
             expect(result.newState).toBe(EscrowState.Disputed);
 
-            const updatedRecord = getEscrow(deployResult.escrowId);
-            expect(updatedRecord?.state).toBe(EscrowState.Disputed);
-            expect(updatedRecord?.disputedAt).toBeDefined();
+            const updated = await getEscrow(record.id);
+            expect(updated?.state).toBe(EscrowState.Disputed);
+            expect(updated?.disputedAt).toBeDefined();
         });
 
-        it("should raise dispute from delivered state", async () => {
-            const deployResult = await deployEscrow(
-                {
-                    buyerAddress: "mn_buyer_1",
-                    sellerAddress: "mn_seller_1",
-                    amount: "1000",
-                    condition: "Deliver goods",
-                },
-                mockMidnightProvider as any,
-            );
+        it("raises a dispute from the delivered state", async () => {
+            const { record } = await createEscrow();
+            await deposit(record.id, record.buyerSecret);
+            await confirmDelivery(record.id, record.sellerSecret);
 
-            const record = getEscrow(deployResult.escrowId);
-
-            await depositFunds(
-                deployResult.escrowId,
-                record!.buyerSecret,
-                mockMidnightProvider as any,
-            );
-
-            await confirmDelivery(
-                deployResult.escrowId,
-                record!.sellerSecret,
-                mockMidnightProvider as any,
-            );
-
-            const result = await raiseDispute(
-                deployResult.escrowId,
-                record!.buyerSecret,
-                mockMidnightProvider as any,
-            );
-
+            const result = await dispute(record.id, record.buyerSecret);
             expect(result.success).toBe(true);
             expect(result.newState).toBe(EscrowState.Disputed);
         });
 
-        it("should reject dispute in created state", async () => {
-            const deployResult = await deployEscrow(
-                {
-                    buyerAddress: "mn_buyer_1",
-                    sellerAddress: "mn_seller_1",
-                    amount: "1000",
-                    condition: "Deliver goods",
-                },
-                mockMidnightProvider as any,
+        it("rejects a dispute in the created state", async () => {
+            const { record } = await createEscrow();
+            await expect(dispute(record.id, record.buyerSecret)).rejects.toThrow(
+                "Cannot perform dispute",
             );
+        });
 
-            const record = getEscrow(deployResult.escrowId);
-
-            const result = await raiseDispute(
-                deployResult.escrowId,
-                record!.buyerSecret,
-                mockMidnightProvider as any,
+        it("rejects a dispute from the seller secret", async () => {
+            const { record } = await createEscrow();
+            await deposit(record.id, record.buyerSecret);
+            await expect(dispute(record.id, record.sellerSecret)).rejects.toThrow(
+                "Invalid secret",
             );
-
-            expect(result.success).toBe(false);
-            expect(result.error).toContain("Cannot perform dispute");
         });
     });
 
-    describe("resolveDispute", () => {
-        it("should resolve dispute successfully by seller", async () => {
-            const deployResult = await deployEscrow(
-                {
-                    buyerAddress: "mn_buyer_1",
-                    sellerAddress: "mn_seller_1",
-                    amount: "1000",
-                    condition: "Deliver goods",
-                },
-                mockMidnightProvider as any,
-            );
+    describe("resolve", () => {
+        it("resolves a dispute by the seller", async () => {
+            const { record } = await createEscrow();
+            await deposit(record.id, record.buyerSecret);
+            await dispute(record.id, record.buyerSecret);
 
-            const record = getEscrow(deployResult.escrowId);
-
-            await depositFunds(
-                deployResult.escrowId,
-                record!.buyerSecret,
-                mockMidnightProvider as any,
-            );
-
-            await raiseDispute(
-                deployResult.escrowId,
-                record!.buyerSecret,
-                mockMidnightProvider as any,
-            );
-
-            const result = await resolveDispute(
-                deployResult.escrowId,
-                record!.sellerSecret,
-                mockMidnightProvider as any,
-            );
+            const result = await resolve(record.id, record.sellerSecret);
 
             expect(result.success).toBe(true);
             expect(result.newState).toBe(EscrowState.Resolved);
 
-            const updatedRecord = getEscrow(deployResult.escrowId);
-            expect(updatedRecord?.state).toBe(EscrowState.Resolved);
-            expect(updatedRecord?.resolvedAt).toBeDefined();
+            const updated = await getEscrow(record.id);
+            expect(updated?.state).toBe(EscrowState.Resolved);
+            expect(updated?.resolvedAt).toBeDefined();
         });
 
-        it("should reject dispute resolution from buyer secret", async () => {
-            const deployResult = await deployEscrow(
-                {
-                    buyerAddress: "mn_buyer_1",
-                    sellerAddress: "mn_seller_1",
-                    amount: "1000",
-                    condition: "Deliver goods",
-                },
-                mockMidnightProvider as any,
+        it("rejects dispute resolution from the buyer secret", async () => {
+            const { record } = await createEscrow();
+            await deposit(record.id, record.buyerSecret);
+            await dispute(record.id, record.buyerSecret);
+
+            await expect(resolve(record.id, record.buyerSecret)).rejects.toThrow(
+                "Only the seller",
             );
-
-            const record = getEscrow(deployResult.escrowId);
-
-            await depositFunds(
-                deployResult.escrowId,
-                record!.buyerSecret,
-                mockMidnightProvider as any,
-            );
-
-            await raiseDispute(
-                deployResult.escrowId,
-                record!.buyerSecret,
-                mockMidnightProvider as any,
-            );
-
-            const result = await resolveDispute(
-                deployResult.escrowId,
-                record!.buyerSecret,
-                mockMidnightProvider as any,
-            );
-
-            expect(result.success).toBe(false);
-            expect(result.error).toContain("Only the seller");
         });
     });
 
-    describe("cancelEscrow", () => {
-        it("should cancel escrow from created state", async () => {
-            const deployResult = await deployEscrow(
-                {
-                    buyerAddress: "mn_buyer_1",
-                    sellerAddress: "mn_seller_1",
-                    amount: "1000",
-                    condition: "Deliver goods",
-                },
-                mockMidnightProvider as any,
-            );
+    describe("cancel", () => {
+        it("cancels an escrow from the created state", async () => {
+            const { record } = await createEscrow();
 
-            const record = getEscrow(deployResult.escrowId);
-
-            const result = await cancelEscrow(
-                deployResult.escrowId,
-                record!.buyerSecret,
-                mockMidnightProvider as any,
-            );
+            const result = await cancel(record.id, record.buyerSecret);
 
             expect(result.success).toBe(true);
             expect(result.newState).toBe(EscrowState.Cancelled);
 
-            const updatedRecord = getEscrow(deployResult.escrowId);
-            expect(updatedRecord?.state).toBe(EscrowState.Cancelled);
-            expect(updatedRecord?.cancelledAt).toBeDefined();
+            const updated = await getEscrow(record.id);
+            expect(updated?.state).toBe(EscrowState.Cancelled);
+            expect(updated?.cancelledAt).toBeDefined();
         });
 
-        it("should reject cancellation after deposit (in mock API flow)", async () => {
-            const deployResult = await deployEscrow(
-                {
-                    buyerAddress: "mn_buyer_1",
-                    sellerAddress: "mn_seller_1",
-                    amount: "1000",
-                    condition: "Deliver goods",
-                },
-                mockMidnightProvider as any,
+        it("cancels from the funded state with deposit refund (contract allows FUNDED -> CANCELLED)", async () => {
+            const { record } = await createEscrow();
+            await deposit(record.id, record.buyerSecret);
+
+            const result = await cancel(record.id, record.buyerSecret);
+
+            expect(result.success).toBe(true);
+            expect(result.newState).toBe(EscrowState.Cancelled);
+
+            const updated = await getEscrow(record.id);
+            expect(updated?.state).toBe(EscrowState.Cancelled);
+        });
+
+        it("rejects cancellation from the seller secret", async () => {
+            const { record } = await createEscrow();
+            await deposit(record.id, record.buyerSecret);
+
+            await expect(cancel(record.id, record.sellerSecret)).rejects.toThrow(
+                "Invalid secret",
             );
+        });
 
-            const record = getEscrow(deployResult.escrowId);
+        it("rejects cancellation from the delivered state", async () => {
+            const { record } = await createEscrow();
+            await deposit(record.id, record.buyerSecret);
+            await confirmDelivery(record.id, record.sellerSecret);
 
-            await depositFunds(
-                deployResult.escrowId,
-                record!.buyerSecret,
-                mockMidnightProvider as any,
+            await expect(cancel(record.id, record.buyerSecret)).rejects.toThrow(
+                "Cannot perform cancel",
             );
-
-            const result = await cancelEscrow(
-                deployResult.escrowId,
-                record!.buyerSecret,
-                mockMidnightProvider as any,
-            );
-
-            expect(result.success).toBe(false);
-            expect(result.error).toContain("Cannot perform cancel");
         });
     });
 
     describe("listEscrows", () => {
-        it("should list all registered escrows", async () => {
-            await deployEscrow(
-                {
-                    buyerAddress: "mn_buyer_1",
-                    sellerAddress: "mn_seller_1",
-                    amount: "1000",
-                    condition: "Deliver goods",
-                },
-                mockMidnightProvider as any,
-            );
+        it("lists all registered escrows", async () => {
+            await createEscrow({ buyerAddress: "mn_buyer_1" });
+            await createEscrow({ buyerAddress: "mn_buyer_2" });
 
-            await deployEscrow(
-                {
-                    buyerAddress: "mn_buyer_2",
-                    sellerAddress: "mn_seller_2",
-                    amount: "2000",
-                    condition: "Deliver services",
-                },
-                mockMidnightProvider as any,
-            );
-
-            const escrows = listEscrows();
+            const escrows = await listEscrows();
             expect(escrows.length).toBe(2);
         });
 
-        it("should filter escrows by lifecycle state", async () => {
-            const deployResult = await deployEscrow(
-                {
-                    buyerAddress: "mn_buyer_1",
-                    sellerAddress: "mn_seller_1",
-                    amount: "1000",
-                    condition: "Deliver goods",
-                },
-                mockMidnightProvider as any,
-            );
+        it("filters escrows by lifecycle state", async () => {
+            const first = await createEscrow({ buyerAddress: "mn_buyer_1" });
+            await createEscrow({ buyerAddress: "mn_buyer_2" });
+            await deposit(first.record.id, first.record.buyerSecret);
 
-            await deployEscrow(
-                {
-                    buyerAddress: "mn_buyer_2",
-                    sellerAddress: "mn_seller_2",
-                    amount: "2000",
-                    condition: "Deliver services",
-                },
-                mockMidnightProvider as any,
-            );
-
-            const record = getEscrow(deployResult.escrowId);
-            await depositFunds(
-                deployResult.escrowId,
-                record!.buyerSecret,
-                mockMidnightProvider as any,
-            );
-
-            const fundedEscrows = listEscrows({
-                state: EscrowState.Funded,
-            });
+            const fundedEscrows = await listEscrows({ state: EscrowState.Funded });
             expect(fundedEscrows.length).toBe(1);
             expect(fundedEscrows[0].state).toBe(EscrowState.Funded);
 
-            const createdEscrows = listEscrows({
-                state: EscrowState.Created,
-            });
+            const createdEscrows = await listEscrows({ state: EscrowState.Created });
             expect(createdEscrows.length).toBe(1);
             expect(createdEscrows[0].state).toBe(EscrowState.Created);
         });
 
-        it("should filter escrows by buyer address", async () => {
-            await deployEscrow(
-                {
-                    buyerAddress: "mn_buyer_1",
-                    sellerAddress: "mn_seller_1",
-                    amount: "1000",
-                    condition: "Deliver goods",
-                },
-                mockMidnightProvider as any,
-            );
+        it("filters escrows by buyer address", async () => {
+            await createEscrow({ buyerAddress: "mn_buyer_1" });
+            await createEscrow({ buyerAddress: "mn_buyer_2" });
 
-            await deployEscrow(
-                {
-                    buyerAddress: "mn_buyer_2",
-                    sellerAddress: "mn_seller_2",
-                    amount: "2000",
-                    condition: "Deliver services",
-                },
-                mockMidnightProvider as any,
-            );
-
-            const buyer1Escrows = listEscrows({
-                buyerAddress: "mn_buyer_1",
-            });
+            const buyer1Escrows = await listEscrows({ buyerAddress: "mn_buyer_1" });
             expect(buyer1Escrows.length).toBe(1);
             expect(buyer1Escrows[0].buyerAddress).toBe("mn_buyer_1");
+        });
+    });
+
+    describe("event log", () => {
+        it("records the full lifecycle timeline with real transition history", async () => {
+            const { record } = await createEscrow();
+            await deposit(record.id, record.buyerSecret);
+            await confirmDelivery(record.id, record.sellerSecret);
+            await release(record.id, record.buyerSecret);
+
+            const events = await listEvents(record.id);
+            const actions = events.map((e) => e.action).reverse();
+            expect(actions).toEqual(["created", "deposit", "confirmDelivery", "release"]);
+
+            for (const event of events) {
+                expect(event.transactionHash).toBeTruthy();
+            }
+        });
+
+        it("throws EscrowError with status 404 for unknown ids", async () => {
+            const error = await getEscrow("missing").then(() => null, (e) => e);
+            expect(error).toBeNull();
+
+            try {
+                await executeEscrowAction("missing", "deposit", {
+                    secret: BUYER_SECRET,
+                    value: "1",
+                });
+                expect.unreachable("should have thrown");
+            } catch (err) {
+                expect(err).toBeInstanceOf(EscrowError);
+                expect((err as EscrowError).statusCode).toBe(404);
+            }
         });
     });
 });
