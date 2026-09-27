@@ -1,5 +1,5 @@
 import React from 'react';
-import { Shield, ExternalLink, Key } from 'lucide-react';
+import { Shield, ExternalLink, Key, Cpu } from 'lucide-react';
 
 export const FooterHUD: React.FC = () => {
   return (
@@ -7,10 +7,12 @@ export const FooterHUD: React.FC = () => {
       style={{
         marginTop: 'auto',
         borderTop: '1px solid var(--border-whisper)',
-        background: 'rgba(7, 8, 12, 0.85)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
+        background: 'var(--glass-base)',
+        backdropFilter: 'blur(24px)',
+        WebkitBackdropFilter: 'blur(24px)',
         padding: '16px 24px',
+        position: 'relative',
+        zIndex: 20,
       }}
     >
       <div
@@ -24,10 +26,26 @@ export const FooterHUD: React.FC = () => {
           gap: 12,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <Shield size={14} color="var(--cyan)" />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div
+            style={{
+              width: 22,
+              height: 22,
+              borderRadius: 6,
+              background: 'rgba(0, 240, 255, 0.1)',
+              border: '1px solid rgba(0, 240, 255, 0.3)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            <Shield size={12} color="var(--cyan)" />
+          </div>
           <span style={{ fontSize: '12px', color: 'var(--text-sub)' }}>
-            <strong>Umbra</strong> — Shielded Zero-Knowledge Escrow Protocol
+            <strong style={{ color: 'var(--text-hero)', fontFamily: 'var(--font-editorial)', fontStyle: 'italic' }}>
+              Umbra
+            </strong>{' '}
+            — Shielded Zero-Knowledge Escrow Protocol
           </span>
         </div>
 
@@ -58,6 +76,7 @@ export const FooterHUD: React.FC = () => {
               fontFamily: 'var(--font-mono)',
               color: 'var(--cyan)',
               textDecoration: 'none',
+              transition: 'opacity 0.2s',
             }}
           >
             <span>Midnight Testnet</span>

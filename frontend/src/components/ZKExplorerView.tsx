@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Copy, Check, Code2, Terminal } from 'lucide-react';
-import SpotlightCard from './SpotlightCard';
+import { Copy, Check, Code2, Terminal, Cpu, Sparkles, Hash } from 'lucide-react';
+import { SpotlightCard } from './SpotlightCard';
+import { CornerAnchors } from './CornerAnchors';
+import { soundFx } from '../lib/AudioEngine';
 
 export const ZKExplorerView: React.FC = () => {
   const [condWitness, setCondWitness] = useState('Deliver verified proof of milestone 2 execution');
@@ -48,135 +50,190 @@ export circuit deposit(value: Uint<64>): [] {
   escrowState = EscrowState.STATE_FUNDED;
 }
 
-export circuit confirmDelivery(conditionProof: Bytes<32>): [] {
+export circuit confirmDelivery(witnessConditionHash: Bytes<32>): [] {
+  const seller = sellerSecret();
+  assert(conditionCommitment == witnessConditionHash, "Invalid condition proof");
   assert(escrowState == EscrowState.STATE_FUNDED, "Must be funded");
-  assert(conditionCommitment == conditionProof, "Condition mismatch");
   escrowState = EscrowState.STATE_DELIVERED;
 }
 
-export circuit release(sellerPubKey: ZswapCoinPublicKey): [] {
+export circuit release(): [] {
   assert(escrowState == EscrowState.STATE_DELIVERED, "Not delivered");
-  sendShielded(sellerPubKey);
   escrowState = EscrowState.STATE_RELEASED;
-}
-
-export circuit cancel(): [] {
-  assert(escrowState == EscrowState.STATE_CREATED || escrowState == EscrowState.STATE_FUNDED, "Cannot cancel");
-  escrowState = EscrowState.STATE_CANCELLED;
 }`;
 
-  const handleCopy = (text: string, label: string) => {
+  const handleCopy = (text: string, field: string) => {
+    soundFx.playTick();
     navigator.clipboard.writeText(text);
-    setCopiedField(label);
+    setCopiedField(field);
     setTimeout(() => setCopiedField(null), 2000);
   };
 
   return (
     <motion.section
       key="explorer"
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
+      style={{ display: 'flex', flexDirection: 'column', gap: 20 }}
     >
-      {/* View Header */}
-      <div style={{ marginBottom: '20px' }}>
-        <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 700, color: '#ffffff' }}>
-          Circuit Lab & Commitment Synthesizer
+      {/* Header */}
+      <div>
+        <h2
+          style={{
+            fontFamily: 'var(--font-editorial)',
+            fontStyle: 'italic',
+            fontSize: '28px',
+            fontWeight: 800,
+            color: 'var(--text-hero)',
+            letterSpacing: '-0.02em',
+          }}
+        >
+          Circuit Lab & Compact Smart Contract Explorer
         </h2>
         <p style={{ fontSize: '13px', color: 'var(--text-sub)', marginTop: '4px' }}>
-          Simulate persistentHash commitments from client-side witnesses and inspect the Compact smart contract state machine.
+          Inspect the zero-knowledge escrow circuits compiled for Midnight Network and test off-chain witness commitment hashing.
         </p>
       </div>
 
-      {/* Split-Pane IDE/Workbench */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'minmax(340px, 420px) 1fr',
-          gap: '16px',
-          alignItems: 'start',
-        }}
-      >
-        {/* Left Pane: Witness & Commitment Simulator */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '16px' }}>
+        {/* Compact Code Sandbox */}
         <SpotlightCard
           spotlightColor="rgba(0, 240, 255, 0.12)"
+          anchorColor="rgba(0, 240, 255, 0.3)"
           style={{
-            background: 'rgba(13, 16, 23, 0.7)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            border: '1px solid var(--border-whisper)',
-            borderRadius: '12px',
-            padding: '20px',
+            padding: '22px',
+            borderRadius: '16px',
+            display: 'flex',
+            flexDirection: 'column',
+          }}
+        >
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              <Code2 size={16} color="var(--cyan)" />
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-hero)', fontFamily: 'var(--font-mono)' }}>
+                EscrowEnclave.compact
+              </span>
+            </div>
+            <button
+              onClick={() => handleCopy(compactCode, 'code')}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: copiedField === 'code' ? 'var(--emerald)' : 'var(--cyan)',
+                fontSize: '11px',
+                fontFamily: 'var(--font-mono)',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 4,
+              }}
+            >
+              {copiedField === 'code' ? <Check size={12} /> : <Copy size={12} />}
+              <span>{copiedField === 'code' ? 'Copied' : 'Copy Source'}</span>
+            </button>
+          </div>
+
+          <div
+            style={{
+              background: 'rgba(0, 0, 0, 0.5)',
+              border: '1px solid var(--border-whisper)',
+              borderRadius: '10px',
+              padding: '14px',
+              fontFamily: 'var(--font-mono)',
+              fontSize: '11px',
+              color: '#d1d5db',
+              overflowX: 'auto',
+              maxHeight: '380px',
+              lineHeight: 1.6,
+            }}
+          >
+            <pre>{compactCode}</pre>
+          </div>
+        </SpotlightCard>
+
+        {/* Live Witness & Commitment Generator */}
+        <SpotlightCard
+          spotlightColor="rgba(192, 132, 252, 0.12)"
+          anchorColor="rgba(192, 132, 252, 0.3)"
+          style={{
+            padding: '22px',
+            borderRadius: '16px',
             display: 'flex',
             flexDirection: 'column',
             gap: '16px',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontSize: '12px', fontWeight: 600, fontFamily: 'var(--font-display)', color: '#ffffff' }}>
-              Witness Commitment Inputs
-            </span>
-            <span
-              style={{
-                fontFamily: 'var(--font-mono)',
-                fontSize: '10px',
-                color: 'var(--cyan)',
-                background: 'rgba(0, 240, 255, 0.08)',
-                padding: '2px 6px',
-                borderRadius: '4px',
-              }}
-            >
-              Client Enclave
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <Terminal size={16} color="var(--amethyst)" />
+            <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-hero)' }}>
+              Live Witness Commitment Calculator
             </span>
           </div>
 
+          <p style={{ fontSize: '12px', color: 'var(--text-sub)', lineHeight: 1.5 }}>
+            Witness data stays strictly in client memory. Only the evaluated <code style={{ color: 'var(--cyan)', fontFamily: 'var(--font-mono)' }}>persistentHash</code> commitment is submitted to the ledger.
+          </p>
+
           <div>
-            <label
-              style={{
-                display: 'block',
-                fontFamily: 'var(--font-mono)',
-                fontSize: '10px',
-                color: 'var(--text-sub)',
-                textTransform: 'uppercase',
-                marginBottom: '6px',
-                letterSpacing: '0.04em',
-              }}
-            >
-              Plaintext Milestone Condition
+            <label style={{ display: 'block', fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text-sub)', textTransform: 'uppercase', marginBottom: '6px' }}>
+              Condition Witness (Plaintext Secret)
             </label>
-            <textarea
+            <input
+              type="text"
               value={condWitness}
               onChange={(e) => setCondWitness(e.target.value)}
-              rows={3}
               style={{
                 width: '100%',
+                padding: '9px 12px',
+                borderRadius: '8px',
                 background: 'rgba(255, 255, 255, 0.03)',
                 border: '1px solid var(--border-whisper)',
-                borderRadius: '8px',
-                padding: '10px 12px',
-                fontFamily: 'var(--font-body)',
-                fontSize: '12px',
                 color: '#ffffff',
-                outline: 'none',
-                lineHeight: 1.5,
+                fontFamily: 'var(--font-mono)',
+                fontSize: '12px',
               }}
             />
           </div>
 
+          <div
+            className="hairline-card"
+            style={{
+              padding: '12px 14px',
+              borderRadius: '10px',
+            }}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <span style={{ fontSize: '10px', color: 'var(--text-faint)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase' }}>
+                Condition persistentHash Commitment
+              </span>
+              <button
+                onClick={() => handleCopy(condCommitment, 'condCommit')}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: copiedField === 'condCommit' ? 'var(--emerald)' : 'var(--cyan)',
+                  fontSize: '10px',
+                  fontFamily: 'var(--font-mono)',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 3,
+                }}
+              >
+                {copiedField === 'condCommit' ? <Check size={11} /> : <Copy size={11} />}
+                <span>{copiedField === 'condCommit' ? 'Copied' : 'Copy'}</span>
+              </button>
+            </div>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--cyan)', wordBreak: 'break-all' }}>
+              {condCommitment}
+            </div>
+          </div>
+
           <div>
-            <label
-              style={{
-                display: 'block',
-                fontFamily: 'var(--font-mono)',
-                fontSize: '10px',
-                color: 'var(--text-sub)',
-                textTransform: 'uppercase',
-                marginBottom: '6px',
-                letterSpacing: '0.04em',
-              }}
-            >
-              Committed Amount (tDUST)
+            <label style={{ display: 'block', fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text-sub)', textTransform: 'uppercase', marginBottom: '6px' }}>
+              Amount Value (tDUST)
             </label>
             <input
               type="number"
@@ -184,148 +241,49 @@ export circuit cancel(): [] {
               onChange={(e) => setAmtWitness(e.target.value)}
               style={{
                 width: '100%',
+                padding: '9px 12px',
+                borderRadius: '8px',
                 background: 'rgba(255, 255, 255, 0.03)',
                 border: '1px solid var(--border-whisper)',
-                borderRadius: '8px',
-                padding: '8px 12px',
+                color: '#ffffff',
                 fontFamily: 'var(--font-mono)',
                 fontSize: '12px',
-                color: '#ffffff',
-                outline: 'none',
               }}
             />
           </div>
 
-          {/* Commitment Previews */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '4px' }}>
-            <div
-              style={{
-                background: 'rgba(0, 240, 255, 0.03)',
-                border: '1px solid rgba(0, 240, 255, 0.15)',
-                borderRadius: '8px',
-                padding: '10px 12px',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--cyan)', textTransform: 'uppercase' }}>
-                  Condition Commitment Hash
-                </span>
-                <button
-                  onClick={() => handleCopy(condCommitment, 'cond')}
-                  style={{ background: 'none', border: 'none', color: 'var(--cyan)', cursor: 'pointer', padding: 0 }}
-                >
-                  {copiedField === 'cond' ? <Check size={11} color="var(--emerald)" /> : <Copy size={11} />}
-                </button>
-              </div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--cyan)', wordBreak: 'break-all' }}>
-                {condCommitment}
-              </div>
-            </div>
-
-            <div
-              style={{
-                background: 'rgba(192, 132, 252, 0.03)',
-                border: '1px solid rgba(192, 132, 252, 0.15)',
-                borderRadius: '8px',
-                padding: '10px 12px',
-              }}
-            >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-                <span style={{ fontSize: '10px', fontFamily: 'var(--font-mono)', color: 'var(--amethyst)', textTransform: 'uppercase' }}>
-                  Amount Commitment Hash
-                </span>
-                <button
-                  onClick={() => handleCopy(amtCommitment, 'amt')}
-                  style={{ background: 'none', border: 'none', color: 'var(--amethyst)', cursor: 'pointer', padding: 0 }}
-                >
-                  {copiedField === 'amt' ? <Check size={11} color="var(--emerald)" /> : <Copy size={11} />}
-                </button>
-              </div>
-              <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--amethyst)', wordBreak: 'break-all' }}>
-                {amtCommitment}
-              </div>
-            </div>
-          </div>
-        </SpotlightCard>
-
-        {/* Right Pane: Code Editor Terminal */}
-        <SpotlightCard
-          spotlightColor="rgba(0, 240, 255, 0.08)"
-          style={{
-            background: 'rgba(11, 13, 19, 0.85)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            border: '1px solid var(--border-whisper)',
-            borderRadius: '12px',
-            overflow: 'hidden',
-          }}
-        >
-          {/* Editor Header Bar */}
           <div
+            className="hairline-card"
             style={{
-              padding: '10px 16px',
-              borderBottom: '1px solid var(--border-whisper)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              background: 'rgba(255, 255, 255, 0.02)',
+              padding: '12px 14px',
+              borderRadius: '10px',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Code2 size={14} color="var(--cyan)" />
-              <span style={{ fontFamily: 'var(--font-mono)', fontSize: '12px', color: '#e2e8f0', fontWeight: 500 }}>
-                contracts/escrow.compact
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <span
-                style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: '10px',
-                  color: 'var(--text-faint)',
-                  background: 'rgba(255, 255, 255, 0.04)',
-                  padding: '2px 6px',
-                  borderRadius: '4px',
-                }}
-              >
-                COMPACT v0.23
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
+              <span style={{ fontSize: '10px', color: 'var(--text-faint)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase' }}>
+                Amount persistentHash Commitment
               </span>
               <button
-                onClick={() => handleCopy(compactCode, 'code')}
+                onClick={() => handleCopy(amtCommitment, 'amtCommit')}
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  color: copiedField === 'code' ? 'var(--emerald)' : 'var(--text-sub)',
-                  fontSize: '11px',
+                  color: copiedField === 'amtCommit' ? 'var(--emerald)' : 'var(--amethyst)',
+                  fontSize: '10px',
                   fontFamily: 'var(--font-mono)',
+                  cursor: 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '4px',
-                  cursor: 'pointer',
+                  gap: 3,
                 }}
               >
-                {copiedField === 'code' ? <Check size={12} /> : <Copy size={12} />}
-                <span>{copiedField === 'code' ? 'Copied' : 'Copy Code'}</span>
+                {copiedField === 'amtCommit' ? <Check size={11} /> : <Copy size={11} />}
+                <span>{copiedField === 'amtCommit' ? 'Copied' : 'Copy'}</span>
               </button>
             </div>
-          </div>
-
-          {/* Editor Code Content */}
-          <div
-            style={{
-              padding: '16px 20px',
-              fontFamily: 'var(--font-mono)',
-              fontSize: '12px',
-              lineHeight: 1.6,
-              color: '#94a3b8',
-              maxHeight: '480px',
-              overflowY: 'auto',
-            }}
-          >
-            <pre style={{ margin: 0, overflowX: 'auto' }}>
-              <code>{compactCode}</code>
-            </pre>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--amethyst)', wordBreak: 'break-all' }}>
+              {amtCommitment}
+            </div>
           </div>
         </SpotlightCard>
       </div>

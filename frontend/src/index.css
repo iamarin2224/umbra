@@ -1,48 +1,77 @@
-@import url('https://fonts.googleapis.com/css2?family=Geist+Mono:wght@300;400;500;600;700&family=Geist:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&family=Plus+Jakarta+Sans:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Space+Mono:ital,wght@0,400;0,700;1,400;1,700&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@300;400;500;600&display=swap');
 
 :root {
-  --bg-canvas: #07080c;
-  --bg-subtle: #0d1017;
-  --bg-card: rgba(13, 16, 23, 0.72);
-  --bg-card-hover: rgba(18, 22, 32, 0.85);
+  /* Dark Void Theme (Default) */
+  --bg-canvas: #06080c;
+  --bg-subtle: #0c0e14;
+  --bg-card: rgba(10, 13, 20, 0.72);
+  --bg-card-hover: rgba(16, 20, 30, 0.85);
 
-  /* Smoked obsidian frosted glass surfaces */
-  --glass-base: rgba(13, 16, 23, 0.65);
-  --glass-surface: rgba(16, 20, 30, 0.75);
-  --glass-hover: rgba(22, 27, 40, 0.85);
-  --glass-active: rgba(28, 34, 50, 0.92);
+  /* Smoked Obsidian Frosted Glass Surfaces */
+  --glass-base: rgba(10, 13, 20, 0.65);
+  --glass-surface: rgba(14, 18, 28, 0.75);
+  --glass-hover: rgba(20, 26, 40, 0.85);
+  --glass-active: rgba(26, 34, 52, 0.92);
 
-  /* Precise minimal borders */
+  /* Precise Ultra-Thin Hairline Borders */
   --border-whisper: rgba(255, 255, 255, 0.08);
-  --border-sheen: rgba(255, 255, 255, 0.14);
-  --border-active: rgba(0, 240, 255, 0.35);
+  --border-sheen: rgba(255, 255, 255, 0.16);
+  --border-active: rgba(0, 240, 255, 0.4);
 
-  /* Neon accents */
+  /* Luminous Accents */
   --cyan: #00f0ff;
   --cyan-dim: rgba(0, 240, 255, 0.12);
-  --cyan-glow: rgba(0, 240, 255, 0.22);
+  --cyan-glow: rgba(0, 240, 255, 0.28);
   --amethyst: #c084fc;
   --amethyst-dim: rgba(192, 132, 252, 0.12);
-  --amethyst-glow: rgba(192, 132, 252, 0.2);
-  --emerald: #34d399;
-  --emerald-dim: rgba(52, 211, 153, 0.12);
-  --emerald-glow: rgba(52, 211, 153, 0.2);
+  --amethyst-glow: rgba(192, 132, 252, 0.24);
+  --emerald: #10b981;
+  --emerald-dim: rgba(16, 185, 129, 0.12);
+  --emerald-glow: rgba(16, 185, 129, 0.24);
   --gold: #fbbf24;
   --gold-dim: rgba(251, 191, 36, 0.12);
   --crimson: #fb7185;
   --crimson-dim: rgba(251, 113, 133, 0.12);
 
-  /* Typography */
-  --text-hero: #fbfbfd;
+  /* Typography Colors */
+  --text-hero: #f5f5f5;
   --text-body: #d1d5db;
   --text-sub: #9ca3af;
   --text-faint: #64748b;
 
-  --font-display: 'Geist', 'Plus Jakarta Sans', -apple-system, sans-serif;
-  --font-body: 'Geist', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: 'Geist Mono', 'JetBrains Mono', monospace;
+  /* Typography Fonts */
+  --font-editorial: 'Playfair Display', Georgia, serif;
+  --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  --font-mono: 'Space Mono', 'JetBrains Mono', monospace;
 
   --ease-apple: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Spotlight mouse coordinates (injected globally) */
+  --mouse-x: 50vw;
+  --mouse-y: 50vh;
+}
+
+/* Light Mode Overrides */
+html.light, body.light {
+  --bg-canvas: #f7f7f7;
+  --bg-subtle: #ececef;
+  --bg-card: rgba(255, 255, 255, 0.85);
+  --bg-card-hover: rgba(255, 255, 255, 0.95);
+
+  --glass-base: rgba(255, 255, 255, 0.7);
+  --glass-surface: rgba(255, 255, 255, 0.82);
+  --glass-hover: rgba(255, 255, 255, 0.94);
+  --glass-active: #ffffff;
+
+  --border-whisper: rgba(0, 0, 0, 0.08);
+  --border-sheen: rgba(0, 0, 0, 0.14);
+  --border-active: rgba(2, 132, 199, 0.5);
+
+  --text-hero: #111111;
+  --text-body: #374151;
+  --text-sub: #6b7280;
+  --text-faint: #9ca3af;
 }
 
 * {
@@ -59,25 +88,39 @@ html, body {
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Custom sleek scrollbar */
+/* Luxury Editorial & Tech Typography Helpers */
+.font-editorial {
+  font-family: var(--font-editorial);
+  font-style: italic;
+  letter-spacing: -0.02em;
+}
+
+.font-tech {
+  font-family: var(--font-mono);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+/* Custom Sleek Scrollbar */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: rgba(4, 5, 7, 0.6);
+  background: rgba(0, 0, 0, 0.2);
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.16);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.25);
+  background: rgba(255, 255, 255, 0.3);
 }
 
 /* Hide default cursor on desktop when interactive cursor is active */
@@ -88,45 +131,86 @@ html, body {
 }
 
 ::selection {
-  background: rgba(0, 240, 255, 0.25);
+  background: rgba(0, 240, 255, 0.3);
   color: #ffffff;
 }
 
-/* Fluid glass card utilities */
-.fluid-glass-panel {
-  background: var(--glass-base);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  border: 1px solid var(--border-whisper);
-  border-radius: 14px;
-  padding: 24px;
-  transition: all 0.3s var(--ease-apple);
+/* Glassmorphism & Spotlight System */
+.glass-card {
   position: relative;
-  overflow: hidden;
-}
-
-.fluid-glass-panel:hover {
-  background: var(--glass-hover);
-  border-color: var(--border-sheen);
-}
-
-/* Custom spotlight card utility */
-.custom-spotlight-card {
   background: var(--glass-base);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
   border: 1px solid var(--border-whisper);
   border-radius: 14px;
-  transition: all 0.3s var(--ease-apple);
+  overflow: hidden;
+  transition: border-color 0.25s var(--ease-apple), transform 0.25s var(--ease-apple), box-shadow 0.25s var(--ease-apple);
 }
 
-.custom-spotlight-card:hover {
-  background: var(--glass-hover);
+.glass-card:hover {
   border-color: var(--border-sheen);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+}
+
+/* Dynamic Cursor-Following Spotlight Glow */
+.spotlight-card {
+  position: relative;
+  background: var(--glass-base);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border: 1px solid var(--border-whisper);
+  border-radius: 14px;
+  overflow: hidden;
+  transition: all 0.25s var(--ease-apple);
+}
+
+.spotlight-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    400px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
+    rgba(0, 240, 255, 0.08),
+    transparent 60%
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.spotlight-card:hover::before {
+  opacity: 1;
+}
+
+.hairline-card {
+  border: 1px solid var(--border-whisper);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.02);
+  transition: all 0.2s var(--ease-apple);
+}
+
+.hairline-card:hover {
+  border-color: var(--border-sheen);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+/* Floating Dynamic Island Notch Bar */
+.notch-bar {
+  background: rgba(10, 13, 20, 0.7);
+  backdrop-filter: blur(32px) saturate(190%);
+  -webkit-backdrop-filter: blur(32px) saturate(190%);
+  border: 1px solid var(--border-whisper);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.04);
 }
 
 /* Form input focus styles */
-input:focus, textarea:focus {
+input:focus, textarea:focus, select:focus {
   border-color: rgba(0, 240, 255, 0.5) !important;
   box-shadow: 0 0 0 1px rgba(0, 240, 255, 0.25) !important;
+  outline: none;
 }

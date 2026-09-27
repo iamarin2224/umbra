@@ -7,10 +7,13 @@ import {
   Lock,
   CheckCircle2,
   AlertTriangle,
+  ArrowUpRight,
+  Shield,
 } from 'lucide-react';
 import { EscrowRecord, EscrowState, ESCROW_STATE_LABELS, EscrowActionType } from '../types/escrow';
-import SpotlightCard from './SpotlightCard';
+import { SpotlightCard } from './SpotlightCard';
 import { PrivacyShield } from './PrivacyShield';
+import { soundFx } from '../lib/AudioEngine';
 
 interface EscrowCardProps {
   escrow: EscrowRecord;
@@ -30,16 +33,16 @@ export const EscrowCard: React.FC<EscrowCardProps> = ({
   const getStateBadge = (state: EscrowState) => {
     switch (state) {
       case EscrowState.Created:
-        return { bg: 'rgba(0, 240, 255, 0.08)', border: 'rgba(0, 240, 255, 0.25)', text: 'var(--cyan)' };
+        return { bg: 'rgba(0, 240, 255, 0.08)', border: 'rgba(0, 240, 255, 0.3)', text: 'var(--cyan)' };
       case EscrowState.Funded:
-        return { bg: 'rgba(251, 191, 36, 0.08)', border: 'rgba(251, 191, 36, 0.25)', text: 'var(--gold)' };
+        return { bg: 'rgba(251, 191, 36, 0.08)', border: 'rgba(251, 191, 36, 0.3)', text: 'var(--gold)' };
       case EscrowState.Delivered:
-        return { bg: 'rgba(192, 132, 252, 0.08)', border: 'rgba(192, 132, 252, 0.25)', text: 'var(--amethyst)' };
+        return { bg: 'rgba(192, 132, 252, 0.08)', border: 'rgba(192, 132, 252, 0.3)', text: 'var(--amethyst)' };
       case EscrowState.Released:
       case EscrowState.Resolved:
-        return { bg: 'rgba(52, 211, 153, 0.08)', border: 'rgba(52, 211, 153, 0.25)', text: 'var(--emerald)' };
+        return { bg: 'rgba(16, 185, 129, 0.08)', border: 'rgba(16, 185, 129, 0.3)', text: 'var(--emerald)' };
       case EscrowState.Disputed:
-        return { bg: 'rgba(251, 113, 133, 0.08)', border: 'rgba(251, 113, 133, 0.25)', text: 'var(--crimson)' };
+        return { bg: 'rgba(251, 113, 133, 0.08)', border: 'rgba(251, 113, 133, 0.3)', text: 'var(--crimson)' };
       case EscrowState.Cancelled:
         return { bg: 'rgba(255, 255, 255, 0.03)', border: 'rgba(255, 255, 255, 0.1)', text: 'var(--text-faint)' };
     }
@@ -55,9 +58,9 @@ export const EscrowCard: React.FC<EscrowCardProps> = ({
       case EscrowState.Funded:
         return { label: 'Deliver Order', action: 'confirmDelivery', color: '#c084fc', icon: <Zap size={12} /> };
       case EscrowState.Delivered:
-        return { label: 'Release Payment', action: 'release', color: '#34d399', icon: <CheckCircle2 size={12} /> };
+        return { label: 'Release Payment', action: 'release', color: '#10b981', icon: <CheckCircle2 size={12} /> };
       case EscrowState.Disputed:
-        return { label: 'Resolve Dispute', action: 'resolve', color: '#34d399', icon: <AlertTriangle size={12} /> };
+        return { label: 'Resolve Dispute', action: 'resolve', color: '#10b981', icon: <AlertTriangle size={12} /> };
       default:
         return null;
     }
@@ -68,40 +71,40 @@ export const EscrowCard: React.FC<EscrowCardProps> = ({
   return (
     <SpotlightCard
       spotlightColor="rgba(0, 240, 255, 0.12)"
-      onClick={() => onSelect?.(escrow)}
+      anchorColor="rgba(0, 240, 255, 0.25)"
+      onClick={() => {
+        soundFx.playOpen();
+        onSelect?.(escrow);
+      }}
       style={{
-        background: 'rgba(13, 16, 23, 0.7)',
-        backdropFilter: 'blur(20px)',
-        WebkitBackdropFilter: 'blur(20px)',
-        border: '1px solid var(--border-whisper)',
-        borderRadius: '12px',
-        padding: '18px 20px',
+        padding: '20px',
         display: 'flex',
         flexDirection: 'column',
-        gap: '14px',
+        gap: '16px',
         cursor: 'pointer',
-        transition: 'all 0.2s var(--ease-apple)',
-        position: 'relative',
+        height: '100%',
+        minHeight: 280,
       }}
     >
-      {/* Top Header: ID + State */}
+      {/* Top Header: ID + State Badge */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <span
             style={{
               fontFamily: 'var(--font-mono)',
-              fontSize: 12,
-              fontWeight: 600,
-              color: '#ffffff',
+              fontSize: 11,
+              fontWeight: 700,
+              color: 'var(--text-hero)',
               background: 'rgba(255, 255, 255, 0.04)',
-              padding: '2px 7px',
-              borderRadius: 5,
+              padding: '2px 8px',
+              borderRadius: 6,
               border: '1px solid var(--border-whisper)',
+              letterSpacing: '0.04em',
             }}
           >
             {escrow.id}
           </span>
-          <span style={{ fontSize: 11, color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>
+          <span style={{ fontSize: 10, color: 'var(--text-faint)', fontFamily: 'var(--font-mono)' }}>
             {new Date(escrow.createdAt).toLocaleDateString()}
           </span>
         </div>
@@ -111,14 +114,15 @@ export const EscrowCard: React.FC<EscrowCardProps> = ({
             display: 'inline-flex',
             alignItems: 'center',
             gap: 5,
-            padding: '3px 8px',
-            borderRadius: '9999px',
+            padding: '3px 9px',
+            borderRadius: 9999,
             background: stateStyle.bg,
             border: `1px solid ${stateStyle.border}`,
-            fontSize: 11,
-            fontWeight: 500,
+            fontSize: 10,
+            fontWeight: 600,
             fontFamily: 'var(--font-mono)',
             color: stateStyle.text,
+            letterSpacing: '0.04em',
           }}
         >
           <span
@@ -127,13 +131,14 @@ export const EscrowCard: React.FC<EscrowCardProps> = ({
               height: 5,
               borderRadius: '50%',
               background: stateStyle.text,
+              boxShadow: `0 0 6px ${stateStyle.text}`,
             }}
           />
           <span>{escrow.stateLabel || ESCROW_STATE_LABELS[escrow.state]}</span>
         </div>
       </div>
 
-      {/* Amount Display */}
+      {/* Amount Display (Editorial Luxury Styling) */}
       <div
         style={{
           display: 'flex',
@@ -144,10 +149,11 @@ export const EscrowCard: React.FC<EscrowCardProps> = ({
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
           <span
             style={{
-              fontFamily: 'var(--font-display)',
-              fontSize: 22,
-              fontWeight: 700,
-              color: '#ffffff',
+              fontFamily: 'var(--font-editorial)',
+              fontStyle: 'italic',
+              fontSize: 28,
+              fontWeight: 800,
+              color: 'var(--text-hero)',
               letterSpacing: '-0.02em',
             }}
           >
@@ -158,7 +164,7 @@ export const EscrowCard: React.FC<EscrowCardProps> = ({
               fontFamily: 'var(--font-mono)',
               fontSize: 12,
               color: 'var(--cyan)',
-              fontWeight: 600,
+              fontWeight: 700,
             }}
           >
             tDUST
@@ -166,14 +172,14 @@ export const EscrowCard: React.FC<EscrowCardProps> = ({
         </div>
         <span
           style={{
-            fontSize: 10,
+            fontSize: 9,
             fontFamily: 'var(--font-mono)',
             color: 'var(--text-faint)',
             textTransform: 'uppercase',
-            letterSpacing: '0.04em',
+            letterSpacing: '0.08em',
           }}
         >
-          Shielded Value
+          Shielded Locked
         </span>
       </div>
 
@@ -185,7 +191,7 @@ export const EscrowCard: React.FC<EscrowCardProps> = ({
             color: 'var(--text-sub)',
             lineHeight: 1.5,
             display: detailsExpanded ? 'block' : '-webkit-box',
-            WebkitLineClamp: detailsExpanded ? 'unset' : 1,
+            WebkitLineClamp: detailsExpanded ? 'unset' : 2,
             WebkitBoxOrient: 'vertical',
             overflow: 'hidden',
           }}
@@ -213,7 +219,7 @@ export const EscrowCard: React.FC<EscrowCardProps> = ({
           alignItems: 'center',
           justifyContent: 'space-between',
           gap: 8,
-          paddingTop: 8,
+          paddingTop: 12,
           borderTop: '1px solid var(--border-whisper)',
           marginTop: 'auto',
         }}
@@ -221,10 +227,11 @@ export const EscrowCard: React.FC<EscrowCardProps> = ({
         <button
           onClick={(e) => {
             e.stopPropagation();
+            soundFx.playOpen();
             onSelect?.(escrow);
           }}
           style={{
-            background: 'none',
+            background: 'transparent',
             border: 'none',
             color: 'var(--text-sub)',
             fontSize: 11,
@@ -234,38 +241,42 @@ export const EscrowCard: React.FC<EscrowCardProps> = ({
             gap: 4,
             cursor: 'pointer',
             padding: 0,
+            transition: 'color 0.15s',
           }}
         >
           <span>Audit Enclave</span>
-          <ExternalLink size={11} />
+          <ArrowUpRight size={12} color="var(--cyan)" />
         </button>
 
         {action && (
           <motion.button
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
             disabled={isActionLoading}
             onClick={(e) => {
               e.stopPropagation();
+              soundFx.playOpen();
               onAction?.(escrow, action.action);
             }}
             style={{
               padding: '6px 14px',
-              borderRadius: 7,
-              background: action.color === '#00f0ff'
-                ? 'linear-gradient(135deg, #00f0ff 0%, #00b4d8 100%)'
-                : action.color === '#c084fc'
-                ? 'linear-gradient(135deg, #c084fc 0%, #9333ea 100%)'
-                : 'linear-gradient(135deg, #34d399 0%, #059669 100%)',
-              color: '#07080c',
+              borderRadius: 8,
+              background:
+                action.color === '#00f0ff'
+                  ? 'linear-gradient(135deg, #00f0ff 0%, #00b4d8 100%)'
+                  : action.color === '#c084fc'
+                  ? 'linear-gradient(135deg, #c084fc 0%, #9333ea 100%)'
+                  : 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+              color: '#06080c',
               border: 'none',
               fontFamily: 'var(--font-body)',
-              fontSize: 12,
-              fontWeight: 600,
+              fontSize: 11,
+              fontWeight: 700,
               cursor: isActionLoading ? 'not-allowed' : 'pointer',
               display: 'flex',
               alignItems: 'center',
               gap: 5,
+              boxShadow: `0 0 14px ${action.color}35`,
             }}
           >
             {action.icon}

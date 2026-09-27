@@ -8,8 +8,11 @@ import {
   CheckCircle2,
   Lock,
   AlertTriangle,
+  Cpu,
 } from 'lucide-react';
 import { EscrowRecord, EscrowActionType, ESCROW_STATE_LABELS } from '../types/escrow';
+import { CornerAnchors } from './CornerAnchors';
+import { soundFx } from '../lib/AudioEngine';
 
 interface ActionModalProps {
   isOpen: boolean;
@@ -102,13 +105,15 @@ export const ActionModal: React.FC<ActionModalProps> = ({
 
   const config = getActionConfig();
 
-  const handleExecute = async () => {
+  const handleConfirm = async () => {
     setError(null);
     try {
-      await onConfirm(escrow.id, actionType, { value: escrow.amount });
+      await onConfirm(escrow.id, actionType);
+      soundFx.playSuccess();
       onClose();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'State transition failed');
+      soundFx.playError();
+      setError(err instanceof Error ? err.message : 'Action execution failed');
     }
   };
 
@@ -123,28 +128,34 @@ export const ActionModal: React.FC<ActionModalProps> = ({
           alignItems: 'center',
           justifyContent: 'center',
           padding: 16,
-          background: 'rgba(0, 0, 0, 0.7)',
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
+          background: 'rgba(0, 0, 0, 0.78)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
         }}
-        onClick={onClose}
+        onClick={() => {
+          soundFx.playClose();
+          onClose();
+        }}
       >
         <motion.div
-          initial={{ opacity: 0, scale: 0.98, y: 10 }}
+          initial={{ opacity: 0, scale: 0.96, y: 12 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.98, y: 10 }}
-          transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+          exit={{ opacity: 0, scale: 0.96, y: 12 }}
+          transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
           onClick={(e) => e.stopPropagation()}
           style={{
-            background: 'rgba(11, 14, 20, 0.98)',
+            position: 'relative',
+            background: 'var(--bg-canvas)',
             border: '1px solid var(--border-sheen)',
-            borderRadius: 14,
+            borderRadius: 18,
             width: '100%',
-            maxWidth: 460,
+            maxWidth: 480,
             overflow: 'hidden',
-            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.7)',
+            boxShadow: '0 25px 60px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(0, 240, 255, 0.15)',
           }}
         >
+          <CornerAnchors color="rgba(0, 240, 255, 0.3)" size={8} />
+
           {/* Header */}
           <div
             style={{
@@ -153,13 +164,14 @@ export const ActionModal: React.FC<ActionModalProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
+              background: 'rgba(255, 255, 255, 0.015)',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <div
                 style={{
-                  width: 30,
-                  height: 30,
+                  width: 32,
+                  height: 32,
                   borderRadius: 8,
                   background: 'rgba(255, 255, 255, 0.04)',
                   border: '1px solid var(--border-whisper)',
@@ -171,21 +183,32 @@ export const ActionModal: React.FC<ActionModalProps> = ({
                 {config.icon}
               </div>
               <div>
-                <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 15, fontWeight: 600, color: '#ffffff' }}>
+                <h3
+                  style={{
+                    fontFamily: 'var(--font-editorial)',
+                    fontStyle: 'italic',
+                    fontSize: 18,
+                    fontWeight: 700,
+                    color: 'var(--text-hero)',
+                  }}
+                >
                   {config.title}
                 </h3>
-                <div style={{ fontSize: 11, color: 'var(--text-sub)' }}>
-                  Target: {escrow.id} ({escrow.amount} tDUST)
+                <div style={{ fontSize: 11, color: 'var(--text-sub)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>
+                  Enclave {escrow.id}
                 </div>
               </div>
             </div>
 
             <button
-              onClick={onClose}
+              onClick={() => {
+                soundFx.playClose();
+                onClose();
+              }}
               style={{
                 width: 28,
                 height: 28,
-                borderRadius: 6,
+                borderRadius: '50%',
                 background: 'rgba(255, 255, 255, 0.04)',
                 border: '1px solid var(--border-whisper)',
                 color: 'var(--text-sub)',
@@ -199,17 +222,17 @@ export const ActionModal: React.FC<ActionModalProps> = ({
             </button>
           </div>
 
-          {/* Body */}
+          {/* Body Content */}
           <div style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: 14 }}>
             {error && (
               <div
                 style={{
-                  background: 'rgba(251, 113, 133, 0.08)',
-                  border: '1px solid rgba(251, 113, 133, 0.25)',
-                  borderRadius: 8,
                   padding: '10px 12px',
+                  borderRadius: 8,
+                  background: 'rgba(251, 113, 133, 0.1)',
+                  border: '1px solid rgba(251, 113, 133, 0.3)',
                   color: 'var(--crimson)',
-                  fontSize: 11,
+                  fontSize: 12,
                   fontFamily: 'var(--font-mono)',
                 }}
               >
@@ -217,58 +240,50 @@ export const ActionModal: React.FC<ActionModalProps> = ({
               </div>
             )}
 
-            <p style={{ fontSize: '12px', color: 'var(--text-sub)', lineHeight: 1.5 }}>
+            <p style={{ fontSize: 13, color: 'var(--text-sub)', lineHeight: 1.5 }}>
               {config.desc}
             </p>
 
+            {/* Circuit Information */}
             <div
+              className="hairline-card"
               style={{
-                background: 'rgba(0, 0, 0, 0.3)',
-                border: '1px solid var(--border-whisper)',
-                borderRadius: 8,
-                padding: '10px 12px',
-                fontFamily: 'var(--font-mono)',
-                fontSize: '11px',
-                color: 'var(--text-faint)',
-              }}
-            >
-              <span style={{ color: config.color, fontWeight: 600 }}>Circuit: </span>
-              <span>{config.circuit}</span>
-            </div>
-
-            <div
-              style={{
-                background: 'rgba(255, 255, 255, 0.02)',
-                border: '1px solid var(--border-whisper)',
-                borderRadius: 8,
-                padding: '8px 12px',
+                padding: '12px 14px',
+                borderRadius: 10,
                 display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                fontSize: '11px',
-                fontFamily: 'var(--font-mono)',
+                flexDirection: 'column',
+                gap: 6,
               }}
             >
-              <span style={{ color: 'var(--text-faint)' }}>STATE:</span>
-              <span style={{ color: '#ffffff', fontWeight: 600 }}>
-                {escrow.stateLabel || ESCROW_STATE_LABELS[escrow.state]}
-              </span>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, color: 'var(--cyan)', fontSize: 11, fontFamily: 'var(--font-mono)' }}>
+                <Cpu size={13} />
+                <span>Midnight Compact Circuit</span>
+              </div>
+              <code style={{ fontSize: 11, color: 'var(--text-hero)', fontFamily: 'var(--font-mono)' }}>
+                {config.circuit}
+              </code>
             </div>
 
-            {/* Actions */}
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 4 }}>
+            {/* Action Buttons */}
+            <div style={{ display: 'flex', gap: 10, marginTop: 8 }}>
               <button
                 type="button"
-                onClick={onClose}
+                onClick={() => {
+                  soundFx.playClose();
+                  onClose();
+                }}
+                disabled={isLoading}
                 style={{
-                  padding: '8px 16px',
+                  flex: 1,
+                  padding: '10px',
                   borderRadius: 8,
-                  background: 'transparent',
+                  background: 'rgba(255, 255, 255, 0.04)',
                   border: '1px solid var(--border-whisper)',
                   color: 'var(--text-sub)',
                   fontFamily: 'var(--font-body)',
                   fontSize: 12,
-                  cursor: 'pointer',
+                  fontWeight: 600,
+                  cursor: isLoading ? 'not-allowed' : 'pointer',
                 }}
               >
                 Cancel
@@ -276,31 +291,50 @@ export const ActionModal: React.FC<ActionModalProps> = ({
 
               <button
                 type="button"
+                onClick={handleConfirm}
                 disabled={isLoading}
-                onClick={handleExecute}
                 style={{
-                  padding: '8px 18px',
+                  flex: 2,
+                  padding: '10px',
                   borderRadius: 8,
-                  background: config.color === 'var(--crimson)'
-                    ? 'linear-gradient(135deg, #fb7185, #e11d48)'
-                    : config.color === 'var(--amethyst)'
-                    ? 'linear-gradient(135deg, #c084fc, #9333ea)'
-                    : config.color === 'var(--emerald)'
-                    ? 'linear-gradient(135deg, #34d399, #059669)'
-                    : 'linear-gradient(135deg, #00f0ff, #00b4d8)',
-                  color: config.color === 'var(--crimson)' ? '#ffffff' : '#07080c',
+                  background:
+                    actionType === 'deposit'
+                      ? 'linear-gradient(135deg, #00f0ff 0%, #00b4d8 100%)'
+                      : actionType === 'confirmDelivery'
+                      ? 'linear-gradient(135deg, #c084fc 0%, #9333ea 100%)'
+                      : actionType === 'release' || actionType === 'resolve'
+                      ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                      : 'linear-gradient(135deg, #fb7185 0%, #e11d48 100%)',
+                  color: '#06080c',
                   border: 'none',
                   fontFamily: 'var(--font-body)',
                   fontSize: 12,
-                  fontWeight: 600,
-                  cursor: isLoading ? 'not-allowed' : 'pointer',
+                  fontWeight: 700,
+                  cursor: isLoading ? 'wait' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
+                  justifyContent: 'center',
                   gap: 6,
+                  boxShadow: `0 0 16px ${config.color}35`,
                 }}
               >
-                <Zap size={13} />
-                <span>{isLoading ? 'Generating Proof...' : config.buttonText}</span>
+                {isLoading ? (
+                  <>
+                    <span
+                      style={{
+                        width: 12,
+                        height: 12,
+                        border: '2px solid #06080c',
+                        borderTopColor: 'transparent',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite',
+                      }}
+                    />
+                    <span>Verifying Proof...</span>
+                  </>
+                ) : (
+                  <span>{config.buttonText}</span>
+                )}
               </button>
             </div>
           </div>

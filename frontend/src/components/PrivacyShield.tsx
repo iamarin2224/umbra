@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, Shield } from 'lucide-react';
+import { soundFx } from '../lib/AudioEngine';
 
 interface PrivacyShieldProps {
   value: string;
@@ -37,28 +38,42 @@ export const PrivacyShield: React.FC<PrivacyShieldProps> = ({
         alignItems: 'center',
         justifyContent: 'space-between',
         gap: 8,
-        padding: '3px 8px',
-        borderRadius: 6,
+        padding: '4px 10px',
+        borderRadius: 8,
         background: 'rgba(255, 255, 255, 0.02)',
         border: '1px solid var(--border-whisper)',
         fontSize: 11,
         fontFamily: 'var(--font-mono)',
         color: obscured ? 'var(--text-sub)' : 'var(--text-hero)',
         maxWidth: '100%',
+        transition: 'border-color 0.2s ease',
       }}
     >
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden' }}>
-        {label && <span style={{ color: 'var(--text-faint)', fontSize: 10 }}>{label}:</span>}
-        <span style={{ letterSpacing: obscured ? '0.05em' : 'normal', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+        {label && (
+          <span style={{ color: 'var(--text-faint)', fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+            {label}:
+          </span>
+        )}
+        <span
+          style={{
+            letterSpacing: obscured ? '0.08em' : 'normal',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+            fontWeight: 500,
+          }}
+        >
           {formatDisplay(value)}
         </span>
       </div>
       <button
         onClick={(e) => {
           e.stopPropagation();
+          soundFx.playTick();
           setObscured(!obscured);
         }}
-        title={obscured ? 'Reveal shielded value' : 'Shield value'}
+        title={obscured ? 'Reveal shielded witness' : 'Shield witness'}
         style={{
           background: 'none',
           border: 'none',

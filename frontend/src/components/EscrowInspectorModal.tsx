@@ -10,10 +10,13 @@ import {
   Layers,
   Zap,
   Activity,
+  ArrowUpRight,
 } from 'lucide-react';
 import { EscrowRecord, EscrowState, ESCROW_STATE_LABELS, EscrowTimelineEvent, EscrowActionType } from '../types/escrow';
 import { StateFlowVisualizer } from './StateFlowVisualizer';
 import { TransactionStream } from './TransactionStream';
+import { CornerAnchors } from './CornerAnchors';
+import { soundFx } from '../lib/AudioEngine';
 
 interface EscrowInspectorModalProps {
   escrow: EscrowRecord | null;
@@ -38,12 +41,12 @@ export const EscrowInspectorModal: React.FC<EscrowInspectorModalProps> = ({
   if (!isOpen || !escrow) return null;
 
   const handleCopy = (text: string, label: string) => {
+    soundFx.playTick();
     navigator.clipboard.writeText(text);
     setCopiedField(label);
     setTimeout(() => setCopiedField(null), 2000);
   };
 
-  // Determine allowed circuits based on state
   const getAllowedActions = (): Array<{ label: string; action: EscrowActionType; color: string }> => {
     switch (escrow.state) {
       case EscrowState.Created:
@@ -84,59 +87,74 @@ export const EscrowInspectorModal: React.FC<EscrowInspectorModalProps> = ({
           alignItems: 'center',
           justifyContent: 'center',
           padding: 16,
-          background: 'rgba(0, 0, 0, 0.7)',
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
+          background: 'rgba(0, 0, 0, 0.78)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
         }}
-        onClick={onClose}
+        onClick={() => {
+          soundFx.playClose();
+          onClose();
+        }}
       >
         <motion.div
-          initial={{ opacity: 0, scale: 0.98, y: 10 }}
+          initial={{ opacity: 0, scale: 0.96, y: 12 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.98, y: 10 }}
-          transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+          exit={{ opacity: 0, scale: 0.96, y: 12 }}
+          transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
           onClick={(e) => e.stopPropagation()}
           style={{
-            background: 'rgba(11, 14, 20, 0.98)',
+            position: 'relative',
+            background: 'var(--bg-canvas)',
             border: '1px solid var(--border-sheen)',
-            borderRadius: 14,
+            borderRadius: 18,
             width: '100%',
-            maxWidth: 720,
-            maxHeight: '85vh',
+            maxWidth: 760,
+            maxHeight: '88vh',
             display: 'flex',
             flexDirection: 'column',
             overflow: 'hidden',
-            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.7)',
+            boxShadow: '0 25px 60px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(0, 240, 255, 0.15)',
           }}
         >
+          <CornerAnchors color="rgba(0, 240, 255, 0.3)" size={8} />
+
           {/* Header Bar */}
           <div
             style={{
-              padding: '16px 20px',
+              padding: '16px 22px',
               borderBottom: '1px solid var(--border-whisper)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
+              background: 'rgba(255, 255, 255, 0.015)',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
               <div
                 style={{
-                  width: 30,
-                  height: 30,
-                  borderRadius: 8,
-                  background: 'rgba(0, 240, 255, 0.08)',
-                  border: '1px solid rgba(0, 240, 255, 0.25)',
+                  width: 34,
+                  height: 34,
+                  borderRadius: 10,
+                  background: 'linear-gradient(135deg, rgba(0, 240, 255, 0.15), rgba(192, 132, 252, 0.15))',
+                  border: '1px solid rgba(0, 240, 255, 0.3)',
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                 }}
               >
-                <Shield size={15} color="var(--cyan)" />
+                <Shield size={16} color="var(--cyan)" />
               </div>
               <div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <h3 style={{ fontFamily: 'var(--font-display)', fontSize: 16, fontWeight: 600, color: '#ffffff' }}>
+                  <h3
+                    style={{
+                      fontFamily: 'var(--font-editorial)',
+                      fontStyle: 'italic',
+                      fontSize: 18,
+                      fontWeight: 700,
+                      color: 'var(--text-hero)',
+                    }}
+                  >
                     Escrow Enclave Audit
                   </h3>
                   <span
@@ -145,25 +163,30 @@ export const EscrowInspectorModal: React.FC<EscrowInspectorModalProps> = ({
                       fontSize: 11,
                       color: 'var(--cyan)',
                       background: 'rgba(0, 240, 255, 0.08)',
-                      padding: '2px 6px',
-                      borderRadius: 4,
+                      border: '1px solid rgba(0, 240, 255, 0.25)',
+                      padding: '2px 7px',
+                      borderRadius: 5,
+                      fontWeight: 600,
                     }}
                   >
                     {escrow.id}
                   </span>
                 </div>
-                <div style={{ fontSize: 11, color: 'var(--text-sub)', marginTop: 1 }}>
+                <div style={{ fontSize: 11, color: 'var(--text-sub)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>
                   Zero-Knowledge State Enclave on Midnight Preprod
                 </div>
               </div>
             </div>
 
             <button
-              onClick={onClose}
+              onClick={() => {
+                soundFx.playClose();
+                onClose();
+              }}
               style={{
-                width: 28,
-                height: 28,
-                borderRadius: 6,
+                width: 30,
+                height: 30,
+                borderRadius: '50%',
                 background: 'rgba(255, 255, 255, 0.04)',
                 border: '1px solid var(--border-whisper)',
                 color: 'var(--text-sub)',
@@ -177,192 +200,251 @@ export const EscrowInspectorModal: React.FC<EscrowInspectorModalProps> = ({
             </button>
           </div>
 
-          {/* Sub Nav Tabs */}
+          {/* Subheader: Segmented Tabs */}
           <div
             style={{
-              padding: '8px 20px',
+              padding: '8px 22px',
               borderBottom: '1px solid var(--border-whisper)',
               display: 'flex',
-              gap: 6,
+              gap: 8,
               background: 'rgba(0, 0, 0, 0.2)',
             }}
           >
             {[
-              { id: 'overview', label: 'Overview', icon: <Layers size={12} /> },
-              { id: 'circuit', label: 'Compact State', icon: <Cpu size={12} /> },
-              { id: 'events', label: 'Proof Stream', icon: <Activity size={12} /> },
-            ].map((tab) => {
-              const isSelected = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id as typeof activeTab)}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 5,
-                    padding: '5px 12px',
-                    borderRadius: 6,
-                    border: isSelected ? '1px solid rgba(0, 240, 255, 0.35)' : '1px solid transparent',
-                    background: isSelected ? 'rgba(0, 240, 255, 0.08)' : 'transparent',
-                    color: isSelected ? 'var(--cyan)' : 'var(--text-sub)',
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 11,
-                    cursor: 'pointer',
-                  }}
-                >
-                  {tab.icon}
-                  <span>{tab.label}</span>
-                </button>
-              );
-            })}
+              { id: 'overview', label: 'Enclave Overview', icon: <Layers size={12} /> },
+              { id: 'circuit', label: 'Compact Circuit Witness', icon: <Cpu size={12} /> },
+              { id: 'events', label: 'ZK Transaction History', icon: <Activity size={12} /> },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  soundFx.playTick();
+                  setActiveTab(tab.id as 'overview' | 'circuit' | 'events');
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  padding: '6px 14px',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: activeTab === tab.id ? 'rgba(0, 240, 255, 0.1)' : 'transparent',
+                  color: activeTab === tab.id ? 'var(--cyan)' : 'var(--text-sub)',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 11,
+                  fontWeight: activeTab === tab.id ? 700 : 400,
+                  cursor: 'pointer',
+                  transition: 'all 0.15s ease',
+                }}
+              >
+                {tab.icon}
+                <span>{tab.label}</span>
+              </button>
+            ))}
           </div>
 
           {/* Body Content */}
-          <div style={{ padding: '20px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 16 }}>
+          <div style={{ padding: '20px 22px', overflowY: 'auto', flex: 1, display: 'flex', flexDirection: 'column', gap: 18 }}>
+            {/* VIEW 1: OVERVIEW */}
             {activeTab === 'overview' && (
               <>
+                {/* State Machine Progression */}
                 <StateFlowVisualizer currentState={escrow.state} />
 
-                {/* Core Parameters */}
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 10 }}>
-                  <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-whisper)', borderRadius: 8, padding: '12px' }}>
-                    <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-faint)' }}>
-                      COMMITTED CAPITAL
+                {/* Financial Summary */}
+                <div
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                    gap: 12,
+                  }}
+                >
+                  <div
+                    className="hairline-card"
+                    style={{
+                      padding: '14px',
+                      borderRadius: 10,
+                    }}
+                  >
+                    <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-faint)', textTransform: 'uppercase' }}>
+                      Shielded Value
                     </div>
-                    <div style={{ fontSize: 18, fontFamily: 'var(--font-display)', fontWeight: 700, color: '#ffffff', marginTop: 2 }}>
-                      {escrow.amount} <span style={{ fontSize: 11, color: 'var(--cyan)' }}>tDUST</span>
+                    <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 4 }}>
+                      <span style={{ fontFamily: 'var(--font-editorial)', fontStyle: 'italic', fontSize: 24, fontWeight: 800, color: 'var(--text-hero)' }}>
+                        {escrow.amount}
+                      </span>
+                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--cyan)', fontWeight: 700 }}>
+                        tDUST
+                      </span>
                     </div>
                   </div>
 
-                  <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-whisper)', borderRadius: 8, padding: '12px' }}>
-                    <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-faint)' }}>
-                      CURRENT STATE
+                  <div
+                    className="hairline-card"
+                    style={{
+                      padding: '14px',
+                      borderRadius: 10,
+                    }}
+                  >
+                    <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-faint)', textTransform: 'uppercase' }}>
+                      Current State
                     </div>
-                    <div style={{ fontSize: 14, fontFamily: 'var(--font-mono)', fontWeight: 600, color: 'var(--cyan)', marginTop: 4 }}>
-                      ● {escrow.stateLabel || ESCROW_STATE_LABELS[escrow.state]}
-                    </div>
-                  </div>
-
-                  <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-whisper)', borderRadius: 8, padding: '12px' }}>
-                    <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-faint)' }}>
-                      INITIALIZED AT
-                    </div>
-                    <div style={{ fontSize: 12, fontFamily: 'var(--font-mono)', color: 'var(--text-sub)', marginTop: 4 }}>
-                      {new Date(escrow.createdAt).toLocaleTimeString()}
+                    <div style={{ marginTop: 4, fontFamily: 'var(--font-mono)', fontSize: 13, fontWeight: 600, color: 'var(--emerald)' }}>
+                      {escrow.stateLabel || ESCROW_STATE_LABELS[escrow.state]}
                     </div>
                   </div>
                 </div>
 
-                {/* Condition Witness */}
-                <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-whisper)', borderRadius: 8, padding: '12px' }}>
-                  <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-faint)' }}>
-                    SETTLEMENT CONDITION (WITNESS SPECIFICATION)
-                  </div>
-                  <p style={{ fontSize: 12, color: 'var(--text-body)', marginTop: 4, lineHeight: 1.5 }}>
-                    {escrow.condition}
-                  </p>
-                </div>
-
-                {/* Contract & Tx Hash */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-whisper)', borderRadius: 8, padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div>
-                      <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-faint)' }}>CONTRACT ADDRESS</div>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: '#ffffff' }}>{escrow.contractAddress}</div>
-                    </div>
-                    <button onClick={() => handleCopy(escrow.contractAddress, 'contract')} style={{ background: 'none', border: 'none', color: 'var(--text-sub)', cursor: 'pointer' }}>
-                      {copiedField === 'contract' ? <Check size={13} color="var(--emerald)" /> : <Copy size={13} />}
-                    </button>
+                {/* Counterparties & Witness Parameters */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                  <div style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--cyan)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                    Shielded Counterparties & Parameters
                   </div>
 
-                  <div style={{ background: 'rgba(255, 255, 255, 0.02)', border: '1px solid var(--border-whisper)', borderRadius: 8, padding: '8px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <div>
-                      <div style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-faint)' }}>LATEST TRANSACTION</div>
-                      <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--cyan)' }}>{escrow.transactionHash}</div>
+                  <div
+                    className="hairline-card"
+                    style={{
+                      padding: '12px 14px',
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: 8,
+                      borderRadius: 10,
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 11, color: 'var(--text-sub)' }}>Buyer Shielded Address:</span>
+                      <button
+                        onClick={() => handleCopy(escrow.buyerAddress, 'buyer')}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: copiedField === 'buyer' ? 'var(--emerald)' : 'var(--cyan)',
+                          fontSize: 11,
+                          fontFamily: 'var(--font-mono)',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}
+                      >
+                        {copiedField === 'buyer' ? <Check size={11} /> : <Copy size={11} />}
+                        <span>{escrow.buyerAddress.slice(0, 10)}...{escrow.buyerAddress.slice(-8)}</span>
+                      </button>
                     </div>
-                    <a href={`https://explorer.preprod.midnight.network/tx/${escrow.transactionHash}`} target="_blank" rel="noreferrer" style={{ color: 'var(--cyan)' }}>
-                      <ExternalLink size={13} />
-                    </a>
+
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span style={{ fontSize: 11, color: 'var(--text-sub)' }}>Seller Shielded Address:</span>
+                      <button
+                        onClick={() => handleCopy(escrow.sellerAddress, 'seller')}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: copiedField === 'seller' ? 'var(--emerald)' : 'var(--cyan)',
+                          fontSize: 11,
+                          fontFamily: 'var(--font-mono)',
+                          cursor: 'pointer',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 4,
+                        }}
+                      >
+                        {copiedField === 'seller' ? <Check size={11} /> : <Copy size={11} />}
+                        <span>{escrow.sellerAddress.slice(0, 10)}...{escrow.sellerAddress.slice(-8)}</span>
+                      </button>
+                    </div>
+
+                    <div style={{ borderTop: '1px solid var(--border-whisper)', paddingTop: 8 }}>
+                      <div style={{ fontSize: 10, color: 'var(--text-faint)', fontFamily: 'var(--font-mono)', marginBottom: 4 }}>
+                        SETTLEMENT CONDITION WITNESS
+                      </div>
+                      <div style={{ fontSize: 12, color: 'var(--text-hero)', lineHeight: 1.5 }}>
+                        {escrow.condition}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </>
             )}
 
+            {/* VIEW 2: CIRCUIT WITNESS */}
             {activeTab === 'circuit' && (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <StateFlowVisualizer currentState={escrow.state} />
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                <div style={{ fontSize: 11, color: 'var(--text-sub)', lineHeight: 1.5 }}>
+                  The Compact smart contract verifies zero-knowledge Halo2 proofs compiled for the Midnight Network. All state transitions check cryptographic commitments without exposing underlying plaintext secrets.
+                </div>
+
                 <div
                   style={{
-                    background: 'rgba(0, 0, 0, 0.4)',
+                    background: 'rgba(0, 0, 0, 0.5)',
                     border: '1px solid var(--border-whisper)',
-                    borderRadius: 8,
-                    padding: '12px',
+                    borderRadius: 10,
+                    padding: '14px',
                     fontFamily: 'var(--font-mono)',
                     fontSize: 11,
-                    color: '#94a3b8',
+                    color: '#a5f3fc',
+                    overflowX: 'auto',
+                    lineHeight: 1.6,
                   }}
                 >
-                  <div style={{ color: 'var(--cyan)', fontWeight: 600, marginBottom: 6 }}>
-                    // Active Compact State:
-                  </div>
-                  <pre style={{ lineHeight: 1.5, overflowX: 'auto', margin: 0 }}>
-                    {`export ledger buyerCommitment: Bytes<32>;
-export ledger sellerCommitment: Bytes<32>;
-export ledger amountCommitment: Bytes<32>;
-export ledger conditionCommitment: Bytes<32>;
-export ledger escrowState: Uint<8>; // State: ${escrow.state}`}
-                  </pre>
+                  <pre>{`// Compact ZK Circuit State Binding
+export ledger contractInstance: Address = "${escrow.contractAddress || escrow.id}";
+export ledger transactionHash: Bytes<32> = "${escrow.transactionHash || '0x4f82a9...'}";
+export ledger escrowState: EscrowState = EscrowState.${escrow.stateLabel || 'STATE_CREATED'};
+
+witness buyerSecret(): Bytes<32>;
+witness sellerSecret(): Bytes<32>;`}</pre>
                 </div>
               </div>
             )}
 
+            {/* VIEW 3: EVENTS */}
             {activeTab === 'events' && (
               <TransactionStream events={events} escrowId={escrow.id} />
             )}
           </div>
 
-          {/* Action Footer */}
+          {/* Footer Action Strip */}
           {allowedActions.length > 0 && (
             <div
               style={{
-                padding: '12px 20px',
+                padding: '14px 22px',
                 borderTop: '1px solid var(--border-whisper)',
-                background: 'rgba(255, 255, 255, 0.02)',
+                background: 'rgba(255, 255, 255, 0.015)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'flex-end',
-                gap: 8,
+                gap: 10,
               }}
             >
               {allowedActions.map((act) => (
                 <button
                   key={act.action}
                   disabled={isActionLoading}
-                  onClick={() => onAction?.(escrow, act.action)}
+                  onClick={() => {
+                    soundFx.playOpen();
+                    onAction?.(escrow, act.action);
+                  }}
                   style={{
-                    padding: '6px 14px',
-                    borderRadius: 7,
-                    background: act.color === 'var(--cyan)'
-                      ? 'linear-gradient(135deg, #00f0ff, #00b4d8)'
-                      : act.color === 'var(--amethyst)'
-                      ? 'linear-gradient(135deg, #c084fc, #9333ea)'
-                      : act.color === 'var(--crimson)'
-                      ? 'linear-gradient(135deg, #fb7185, #e11d48)'
-                      : 'linear-gradient(135deg, #34d399, #059669)',
-                    color: act.color === 'var(--crimson)' ? '#ffffff' : '#07080c',
-                    border: 'none',
+                    padding: '7px 16px',
+                    borderRadius: 8,
+                    background:
+                      act.action === 'deposit'
+                        ? 'linear-gradient(135deg, #00f0ff 0%, #00b4d8 100%)'
+                        : act.action === 'release' || act.action === 'resolve'
+                        ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+                        : act.action === 'confirmDelivery'
+                        ? 'linear-gradient(135deg, #c084fc 0%, #9333ea 100%)'
+                        : 'rgba(251, 113, 133, 0.1)',
+                    color: act.action === 'cancel' || act.action === 'dispute' ? 'var(--crimson)' : '#06080c',
+                    border: act.action === 'cancel' || act.action === 'dispute' ? '1px solid rgba(251, 113, 133, 0.3)' : 'none',
                     fontFamily: 'var(--font-body)',
                     fontSize: 12,
-                    fontWeight: 600,
+                    fontWeight: 700,
                     cursor: isActionLoading ? 'not-allowed' : 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 5,
+                    boxShadow: act.action === 'deposit' ? '0 0 14px rgba(0, 240, 255, 0.3)' : 'none',
                   }}
                 >
-                  <Zap size={12} />
-                  <span>{act.label}</span>
+                  {act.label}
                 </button>
               ))}
             </div>

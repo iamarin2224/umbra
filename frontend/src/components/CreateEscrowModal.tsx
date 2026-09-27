@@ -1,17 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X,
   AlertCircle,
   Lock,
+  Plus,
+  Zap,
+  Shield,
+  Sparkles,
 } from 'lucide-react';
 import { useMidnightWallet } from '../context/MidnightWalletContext';
+import { CornerAnchors } from './CornerAnchors';
+import { soundFx } from '../lib/AudioEngine';
+import { MagicDraftPayload } from './CommandPalette';
 
 interface CreateEscrowModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (data: { sellerAddress: string; amount: string; condition: string }) => Promise<void>;
   isLoading?: boolean;
+  initialData?: MagicDraftPayload | null;
 }
 
 export const CreateEscrowModal: React.FC<CreateEscrowModalProps> = ({
@@ -19,12 +27,21 @@ export const CreateEscrowModal: React.FC<CreateEscrowModalProps> = ({
   onClose,
   onSubmit,
   isLoading = false,
+  initialData = null,
 }) => {
   const { address } = useMidnightWallet();
   const [sellerAddress, setSellerAddress] = useState('');
   const [amount, setAmount] = useState('1000');
   const [condition, setCondition] = useState('Delivery and cryptographic verification of milestone specifications.');
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (initialData) {
+      if (initialData.amount) setAmount(initialData.amount);
+      if (initialData.condition) setCondition(initialData.condition);
+      if (initialData.sellerAddress) setSellerAddress(initialData.sellerAddress);
+    }
+  }, [initialData]);
 
   if (!isOpen) return null;
 
@@ -33,22 +50,26 @@ export const CreateEscrowModal: React.FC<CreateEscrowModalProps> = ({
     setValidationError(null);
 
     if (!address) {
-      setValidationError('Connect a Midnight wallet first — the buyer address comes from your live wallet.');
+      soundFx.playError();
+      setValidationError('Connect a Midnight wallet first — buyer address is bound to your active wallet.');
       return;
     }
 
     const parsedAmount = parseFloat(amount);
     if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      soundFx.playError();
       setValidationError('Please specify a valid escrow amount greater than 0.');
       return;
     }
 
     if (!sellerAddress.trim()) {
+      soundFx.playError();
       setValidationError('Seller shielded address is required.');
       return;
     }
 
     if (!condition.trim()) {
+      soundFx.playError();
       setValidationError('Settlement condition witness is required.');
       return;
     }
@@ -59,8 +80,10 @@ export const CreateEscrowModal: React.FC<CreateEscrowModalProps> = ({
         amount: amount.trim(),
         condition: condition.trim(),
       });
+      soundFx.playSuccess();
       onClose();
     } catch (err: unknown) {
+      soundFx.playError();
       setValidationError(err instanceof Error ? err.message : 'Failed to deploy escrow contract');
     }
   };
@@ -76,28 +99,34 @@ export const CreateEscrowModal: React.FC<CreateEscrowModalProps> = ({
           alignItems: 'center',
           justifyContent: 'center',
           padding: 16,
-          background: 'rgba(0, 0, 0, 0.7)',
-          backdropFilter: 'blur(10px)',
-          WebkitBackdropFilter: 'blur(10px)',
+          background: 'rgba(0, 0, 0, 0.78)',
+          backdropFilter: 'blur(16px)',
+          WebkitBackdropFilter: 'blur(16px)',
         }}
-        onClick={onClose}
+        onClick={() => {
+          soundFx.playClose();
+          onClose();
+        }}
       >
         <motion.div
-          initial={{ opacity: 0, scale: 0.98, y: 10 }}
+          initial={{ opacity: 0, scale: 0.96, y: 12 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
-          exit={{ opacity: 0, scale: 0.98, y: 10 }}
-          transition={{ duration: 0.18, ease: [0.16, 1, 0.3, 1] }}
+          exit={{ opacity: 0, scale: 0.96, y: 12 }}
+          transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
           onClick={(e) => e.stopPropagation()}
           style={{
-            background: 'rgba(11, 14, 20, 0.98)',
+            position: 'relative',
+            background: 'var(--bg-canvas)',
             border: '1px solid var(--border-sheen)',
-            borderRadius: 14,
+            borderRadius: 18,
             width: '100%',
-            maxWidth: 500,
+            maxWidth: 520,
             overflow: 'hidden',
-            boxShadow: '0 20px 50px rgba(0, 0, 0, 0.7)',
+            boxShadow: '0 25px 60px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(0, 240, 255, 0.15)',
           }}
         >
+          <CornerAnchors color="rgba(0, 240, 255, 0.3)" size={8} />
+
           {/* Header */}
           <div
             style={{
@@ -106,30 +135,51 @@ export const CreateEscrowModal: React.FC<CreateEscrowModalProps> = ({
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
+              background: 'rgba(255, 255, 255, 0.015)',
             }}
           >
-            <div>
-              <h3
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div
                 style={{
-                  fontFamily: 'var(--font-display)',
-                  fontSize: 16,
-                  fontWeight: 600,
-                  color: '#ffffff',
+                  width: 32,
+                  height: 32,
+                  borderRadius: 8,
+                  background: 'linear-gradient(135deg, rgba(0, 240, 255, 0.2), rgba(192, 132, 252, 0.2))',
+                  border: '1px solid rgba(0, 240, 255, 0.3)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}
               >
-                Deploy Shielded Escrow
-              </h3>
-              <div style={{ fontSize: 11, color: 'var(--text-sub)', marginTop: 2 }}>
-                Initialize Compact state machine on Midnight
+                <Lock size={15} color="var(--cyan)" />
+              </div>
+              <div>
+                <h3
+                  style={{
+                    fontFamily: 'var(--font-editorial)',
+                    fontStyle: 'italic',
+                    fontSize: 18,
+                    fontWeight: 700,
+                    color: 'var(--text-hero)',
+                  }}
+                >
+                  Deploy Shielded Escrow
+                </h3>
+                <div style={{ fontSize: 11, color: 'var(--text-sub)', marginTop: 2, fontFamily: 'var(--font-mono)' }}>
+                  Initialize Compact state machine on Midnight
+                </div>
               </div>
             </div>
 
             <button
-              onClick={onClose}
+              onClick={() => {
+                soundFx.playClose();
+                onClose();
+              }}
               style={{
                 width: 28,
                 height: 28,
-                borderRadius: 6,
+                borderRadius: '50%',
                 background: 'rgba(255, 255, 255, 0.04)',
                 border: '1px solid var(--border-whisper)',
                 color: 'var(--text-sub)',
@@ -148,99 +198,34 @@ export const CreateEscrowModal: React.FC<CreateEscrowModalProps> = ({
             {validationError && (
               <div
                 style={{
-                  background: 'rgba(251, 113, 133, 0.08)',
-                  border: '1px solid rgba(251, 113, 133, 0.25)',
-                  borderRadius: 8,
                   padding: '10px 12px',
+                  borderRadius: 8,
+                  background: 'rgba(251, 113, 133, 0.1)',
+                  border: '1px solid rgba(251, 113, 133, 0.3)',
+                  color: 'var(--crimson)',
+                  fontSize: 12,
+                  fontFamily: 'var(--font-mono)',
                   display: 'flex',
                   alignItems: 'center',
                   gap: 8,
-                  color: 'var(--crimson)',
-                  fontSize: 11,
-                  fontFamily: 'var(--font-mono)',
                 }}
               >
-                <AlertCircle size={14} />
+                <AlertCircle size={14} style={{ flexShrink: 0 }} />
                 <span>{validationError}</span>
               </div>
             )}
 
-            {/* Connected Buyer */}
+            {/* Shielded Amount */}
             <div>
               <label
                 style={{
                   display: 'block',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 10,
-                  color: 'var(--text-sub)',
-                  marginBottom: 4,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                }}
-              >
-                Buyer Address (Connected)
-              </label>
-              <div
-                style={{
-                  background: 'rgba(255, 255, 255, 0.02)',
-                  border: '1px solid var(--border-whisper)',
-                  borderRadius: 8,
-                  padding: '8px 12px',
                   fontSize: 11,
                   fontFamily: 'var(--font-mono)',
-                  color: address ? '#ffffff' : 'var(--crimson)',
-                  wordBreak: 'break-all',
-                }}
-              >
-                {address || 'Wallet not connected — connect wallet to proceed'}
-              </div>
-            </div>
-
-            {/* Seller Address */}
-            <div>
-              <label
-                style={{
-                  display: 'block',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 10,
                   color: 'var(--text-sub)',
-                  marginBottom: 4,
                   textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
-                }}
-              >
-                Seller Shielded Address
-              </label>
-              <input
-                type="text"
-                value={sellerAddress}
-                onChange={(e) => setSellerAddress(e.target.value)}
-                placeholder="mn_shielded_..."
-                style={{
-                  width: '100%',
-                  background: 'rgba(255, 255, 255, 0.03)',
-                  border: '1px solid var(--border-whisper)',
-                  borderRadius: 8,
-                  padding: '9px 12px',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 12,
-                  color: '#ffffff',
-                  outline: 'none',
-                }}
-              />
-            </div>
-
-            {/* Amount */}
-            <div>
-              <label
-                style={{
-                  display: 'block',
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 10,
-                  color: 'var(--text-sub)',
-                  marginBottom: 4,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
+                  letterSpacing: '0.05em',
+                  marginBottom: 6,
                 }}
               >
                 Escrow Value (tDUST)
@@ -248,21 +233,20 @@ export const CreateEscrowModal: React.FC<CreateEscrowModalProps> = ({
               <div style={{ position: 'relative' }}>
                 <input
                   type="number"
+                  step="any"
+                  required
                   value={amount}
                   onChange={(e) => setAmount(e.target.value)}
                   placeholder="1000"
                   style={{
                     width: '100%',
+                    padding: '10px 14px',
+                    borderRadius: 8,
                     background: 'rgba(255, 255, 255, 0.03)',
                     border: '1px solid var(--border-whisper)',
-                    borderRadius: 8,
-                    padding: '9px 12px',
-                    paddingRight: 60,
-                    fontFamily: 'var(--font-mono)',
-                    fontSize: 13,
-                    fontWeight: 600,
                     color: '#ffffff',
-                    outline: 'none',
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 14,
                   }}
                 />
                 <span
@@ -282,80 +266,119 @@ export const CreateEscrowModal: React.FC<CreateEscrowModalProps> = ({
               </div>
             </div>
 
+            {/* Seller Address */}
+            <div>
+              <label
+                style={{
+                  display: 'block',
+                  fontSize: 11,
+                  fontFamily: 'var(--font-mono)',
+                  color: 'var(--text-sub)',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.05em',
+                  marginBottom: 6,
+                }}
+              >
+                Seller Shielded Address
+              </label>
+              <input
+                type="text"
+                required
+                value={sellerAddress}
+                onChange={(e) => setSellerAddress(e.target.value)}
+                placeholder="mn_shield_..."
+                style={{
+                  width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: 8,
+                  background: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid var(--border-whisper)',
+                  color: '#ffffff',
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 12,
+                }}
+              />
+            </div>
+
             {/* Condition Witness */}
             <div>
               <label
                 style={{
                   display: 'block',
+                  fontSize: 11,
                   fontFamily: 'var(--font-mono)',
-                  fontSize: 10,
                   color: 'var(--text-sub)',
-                  marginBottom: 4,
                   textTransform: 'uppercase',
-                  letterSpacing: '0.04em',
+                  letterSpacing: '0.05em',
+                  marginBottom: 6,
                 }}
               >
                 Settlement Condition Witness
               </label>
               <textarea
                 rows={3}
+                required
                 value={condition}
                 onChange={(e) => setCondition(e.target.value)}
-                placeholder="Describe milestone terms..."
+                placeholder="Cryptographic deliverable criteria..."
                 style={{
                   width: '100%',
+                  padding: '10px 14px',
+                  borderRadius: 8,
                   background: 'rgba(255, 255, 255, 0.03)',
                   border: '1px solid var(--border-whisper)',
-                  borderRadius: 8,
-                  padding: '9px 12px',
+                  color: '#ffffff',
                   fontFamily: 'var(--font-body)',
                   fontSize: 12,
-                  color: '#ffffff',
-                  outline: 'none',
-                  lineHeight: 1.4,
+                  resize: 'none',
+                  lineHeight: 1.5,
                 }}
               />
             </div>
 
-            {/* Submit Actions */}
-            <div style={{ marginTop: 6, display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-              <button
-                type="button"
-                onClick={onClose}
-                style={{
-                  padding: '8px 16px',
-                  borderRadius: 8,
-                  background: 'transparent',
-                  border: '1px solid var(--border-whisper)',
-                  color: 'var(--text-sub)',
-                  fontFamily: 'var(--font-body)',
-                  fontSize: 12,
-                  cursor: 'pointer',
-                }}
-              >
-                Cancel
-              </button>
-
+            {/* Deploy CTA Button */}
+            <div style={{ marginTop: 8 }}>
               <button
                 type="submit"
                 disabled={isLoading}
                 style={{
-                  padding: '8px 18px',
-                  borderRadius: 8,
+                  width: '100%',
+                  padding: '11px',
+                  borderRadius: 10,
                   background: 'linear-gradient(135deg, #00f0ff 0%, #00b4d8 100%)',
-                  color: '#07080c',
+                  color: '#06080c',
                   border: 'none',
                   fontFamily: 'var(--font-body)',
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: isLoading ? 'not-allowed' : 'pointer',
+                  fontSize: 13,
+                  fontWeight: 700,
+                  cursor: isLoading ? 'wait' : 'pointer',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: 6,
+                  justifyContent: 'center',
+                  gap: 8,
+                  boxShadow: '0 0 20px rgba(0, 240, 255, 0.35)',
                 }}
               >
-                <Lock size={12} />
-                <span>{isLoading ? 'Synthesizing Proof...' : 'Deploy Escrow'}</span>
+                {isLoading ? (
+                  <>
+                    <span
+                      style={{
+                        width: 12,
+                        height: 12,
+                        border: '2px solid #06080c',
+                        borderTopColor: 'transparent',
+                        borderRadius: '50%',
+                        animation: 'spin 1s linear infinite',
+                      }}
+                    />
+                    <span>Compiling ZK Proof & Deploying...</span>
+                  </>
+                ) : (
+                  <>
+                    <Plus size={15} strokeWidth={2.5} />
+                    <span>Deploy Shielded Escrow Enclave</span>
+                  </>
+                )}
               </button>
             </div>
           </form>
