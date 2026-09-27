@@ -17,19 +17,13 @@ import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-pri
 import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
 
 import { resolveNetwork, getOrCreateWallet, type NetworkConfig, type NetworkId } from './network.js';
-import { createWallet, persistWalletState, unshieldedToken, type WalletContext } from './wallet.js';
+import { createWallet, persistWalletState, unshieldedToken, waitForSyncedWalletState, type WalletContext } from './wallet.js';
+import { encodeStringToBytes32 } from './escrow/witnesses.js';
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
 globalThis.WebSocket = WebSocket as any;
 
 const UMBRA_PRIVATE_STATE_ID = 'umbraEscrowPrivateState';
-
-function encodeStringToBytes32(textValue: string): Uint8Array {
-    const rawEncodedBytes = new TextEncoder().encode(textValue);
-    const paddedArray = new Uint8Array(32);
-    paddedArray.set(rawEncodedBytes.slice(0, 32));
-    return paddedArray;
-}
 
 // ─── Client Singleton Instance & Interface ──────────────────────────────────
 
@@ -93,8 +87,18 @@ async function checkProofServerAvailability(
             return true;
         } catch (err: any) {
             const errCode = err?.cause?.code || err?.code || '';
-            if (errCode !== 'ECONNREFUSED' && errCode !== 'UND_ERR_CONNECT_TIMEOUT' && errCode !== 'UND_ERR_SOCKET') {
-                return true;
+            const isConnectFailure =
+                errCode === 'ECONNREFUSED' ||
+                errCode === 'UND_ERR_CONNECT_TIMEOUT' ||
+                errCode === 'UND_ERR_SOCKET' ||
+                errCode === 'ETIMEDOUT' ||
+                errCode === 'ABORT_ERR' ||
+                err?.name === 'TimeoutError' ||
+                err?.name === 'AbortError' ||
+                /fetch failed|connect ECONNREFUSED|network/i.test(String(err?.message || ''));
+            if (!isConnectFailure) {
+                console.error(`[Umbra-Midnight] Proof server probe error: ${err?.message || err}`);
+                return false;
             }
         }
         if (attempt < maxAttempts) {
@@ -113,12 +117,12 @@ export async function getMidnightClient(): Promise<MidnightClient> {
     console.log('[Umbra-Midnight] Initializing wallet...');
     const walletCtx = await createWallet({ network, networkConfig, seed: activeWallet.seed });
 
-    console.log('[Umbra-Midnight] Synchronizing wallet state...');
+    console.log('[Umbra-Midnight] Synchronizing wallet state (fresh preprod wallets replay full history: 40-75+ min expected)...');
     const syncStartTime = Date.now();
-    await walletCtx.wallet.waitForSyncedState();
+    await waitForSyncedWalletState(network, walletCtx, {
+        onProgress: (line) => console.log(`[Umbra-Midnight] ${line.trim()}`),
+    });
     console.log(`[Umbra-Midnight] Wallet synced in ${((Date.now() - syncStartTime) / 1000).toFixed(1)}s`);
-
-    await persistWalletState(network, walletCtx);
 
     const dustState = await Rx.firstValueFrom(walletCtx.wallet.state().pipe(Rx.filter((s) => s.isSynced)));
     const tNightBalance = dustState.unshielded.balances[unshieldedToken().raw] ?? 0n;
@@ -160,11 +164,18 @@ export async function getMidnightClient(): Promise<MidnightClient> {
 
 // ─── Wallet Shielded Coins Query ────────────────────────────────────────────
 
+/** JSON-safe coin fields — Uint8Array as hex, bigint as decimal string. */
 export interface WalletCoinInfo {
-    nonce: Uint8Array;
-    color: Uint8Array;
-    value: bigint;
-    mtIndex: bigint;
+    nonce: string;
+    color: string;
+    value: string;
+    mtIndex: string;
+}
+
+function toHex(value: unknown): string {
+    if (value instanceof Uint8Array) return Buffer.from(value).toString('hex');
+    if (typeof value === 'string') return value;
+    return String(value);
 }
 
 export async function getWalletAvailableCoins(): Promise<WalletCoinInfo[]> {
@@ -174,10 +185,10 @@ export async function getWalletAvailableCoins(): Promise<WalletCoinInfo[]> {
     const availableCoins = syncedState.shielded.availableCoins;
 
     return availableCoins.map((coinEntry: any) => ({
-        nonce: coinEntry.coin.nonce,
-        color: coinEntry.coin.type,
-        value: coinEntry.coin.value,
-        mtIndex: coinEntry.coin.mt_index,
+        nonce: toHex(coinEntry.coin.nonce),
+        color: toHex(coinEntry.coin.type),
+        value: String(coinEntry.coin.value),
+        mtIndex: String(coinEntry.coin.mt_index),
     }));
 }
 
@@ -264,8 +275,10 @@ export async function deployEscrowOnChain(params: {
     sellerSecret: string;
     amount: string;
     condition: string;
+    privateStateId?: string;
 }): Promise<DeployResult> {
     const client = await getMidnightClient();
+    const privateStateId = params.privateStateId ?? UMBRA_PRIVATE_STATE_ID;
 
     console.log(`[Umbra-Midnight] Deploying escrow on-chain: amount=${params.amount}...`);
 
@@ -290,7 +303,7 @@ export async function deployEscrowOnChain(params: {
             deployedContract = await deployContract(client.providers, {
                 compiledContract: contractDefinition,
                 args: [],
-                privateStateId: UMBRA_PRIVATE_STATE_ID,
+                privateStateId,
                 initialPrivateState: {
                     buyerSecret: params.buyerSecret,
                     sellerSecret: params.sellerSecret,
@@ -372,8 +385,11 @@ export async function callCircuit(
     });
 
     const publicSection = (callResult as any).public || callResult;
-    const transactionHash = publicSection.txHash || `mn_tx_${circuitName}_${Date.now().toString(16)}`;
-    const blockHeight = publicSection.blockHeight || 0;
+    const transactionHash = publicSection.txHash;
+    if (!transactionHash) {
+        throw new Error(`Circuit "${circuitName}" returned no transaction hash — refusing to report a phantom tx`);
+    }
+    const blockHeight = publicSection.blockHeight ?? 0;
 
     console.log(`[Umbra-Midnight] Circuit "${circuitName}" executed successfully, tx: ${transactionHash}`);
 

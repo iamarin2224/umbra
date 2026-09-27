@@ -2,6 +2,7 @@ import { describe, it, expect } from "vitest";
 import {
     createEscrowWitnesses,
     createWitnessesFromRecord,
+    encodeStringToBytes32,
     generateSecret,
     generateSalt,
 } from "../src/escrow/witnesses";
@@ -31,7 +32,7 @@ describe("Umbra Witnesses & Secret Generation", () => {
             expect(typeof witnesses.conditionHash).toBe("function");
         });
 
-        it("should return normalized 32-byte hex strings", () => {
+        it("should encode values via canonical UTF-8 bytes32 (same as on-chain paths)", () => {
             const buyerSecret = "a".repeat(64);
             const sellerSecret = "b".repeat(64);
             const amount = "c".repeat(64);
@@ -44,10 +45,11 @@ describe("Umbra Witnesses & Secret Generation", () => {
                 condition,
             );
 
-            expect(witnesses.buyerSecret()).toBe(buyerSecret);
-            expect(witnesses.sellerSecret()).toBe(sellerSecret);
-            expect(witnesses.escrowAmount()).toBe(amount);
-            expect(witnesses.conditionHash()).toBe(condition);
+            // UTF-8 "aaaa..." truncated to 32 bytes → 0x61 repeated 32 times
+            expect(witnesses.buyerSecret()).toBe("61".repeat(32));
+            expect(witnesses.sellerSecret()).toBe("62".repeat(32));
+            expect(witnesses.escrowAmount()).toBe("63".repeat(32));
+            expect(witnesses.conditionHash()).toBe("64".repeat(32));
         });
 
         it("should pad short values to 32 bytes (64 hex characters)", () => {
@@ -60,11 +62,13 @@ describe("Umbra Witnesses & Secret Generation", () => {
 
             const buyerResult = witnesses.buyerSecret();
             expect(buyerResult.length).toBe(64);
-            expect(buyerResult.startsWith("aabb")).toBe(true);
+            // UTF-8 "aabb" → 61 61 62 62 then zero padding
+            expect(buyerResult.startsWith("61616262")).toBe(true);
+            expect(buyerResult.endsWith("00".repeat(28))).toBe(true);
 
             const sellerResult = witnesses.sellerSecret();
             expect(sellerResult.length).toBe(64);
-            expect(sellerResult.startsWith("ccdd")).toBe(true);
+            expect(sellerResult.startsWith("63636464")).toBe(true);
         });
 
         it("should truncate long values to 32 bytes", () => {
@@ -78,7 +82,23 @@ describe("Umbra Witnesses & Secret Generation", () => {
 
             const result = witnesses.buyerSecret();
             expect(result.length).toBe(64);
-            expect(result).toBe("a".repeat(64));
+            expect(result).toBe("61".repeat(32));
+        });
+    });
+
+    describe("encodeStringToBytes32", () => {
+        it("should be the single shared encoding for all deploy/circuit paths", () => {
+            const bytes = encodeStringToBytes32("hi");
+            expect(bytes).toBeInstanceOf(Uint8Array);
+            expect(bytes.length).toBe(32);
+            expect(Array.from(bytes.slice(0, 2))).toEqual([0x68, 0x69]);
+            expect(Array.from(bytes.slice(2)).every((b) => b === 0)).toBe(true);
+        });
+
+        it("should truncate values beyond 32 bytes", () => {
+            const bytes = encodeStringToBytes32("x".repeat(40));
+            expect(bytes.length).toBe(32);
+            expect(Array.from(bytes).every((b) => b === 0x78)).toBe(true);
         });
     });
 
@@ -93,10 +113,11 @@ describe("Umbra Witnesses & Secret Generation", () => {
 
             const witnesses = createWitnessesFromRecord(record);
 
-            expect(witnesses.buyerSecret()).toBe(record.buyerSecret);
-            expect(witnesses.sellerSecret()).toBe(record.sellerSecret);
-            expect(witnesses.escrowAmount()).toBe(record.amount);
-            expect(witnesses.conditionHash()).toBe(record.condition);
+            // Same canonical UTF-8 bytes32 encoding as createEscrowWitnesses
+            expect(witnesses.buyerSecret()).toBe("61".repeat(32));
+            expect(witnesses.sellerSecret()).toBe("62".repeat(32));
+            expect(witnesses.escrowAmount()).toBe("63".repeat(32));
+            expect(witnesses.conditionHash()).toBe("64".repeat(32));
         });
     });
 

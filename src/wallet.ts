@@ -91,6 +91,10 @@ export async function createWallet(opts: CreateWalletOptions): Promise<WalletCon
     indexerClientConnection: {
       indexerHttpUrl: opts.networkConfig.indexer,
       indexerWsUrl: opts.networkConfig.indexerWS,
+      // Long preprod catch-up streams (>1h for a fresh wallet) are killed by
+      // idle load-balancer timeouts without an application-level keep-alive.
+      // 30s keeps the WS alive while adding negligible traffic.
+      keepAlive: 30_000,
     },
     provingServerUrl: new URL(opts.networkConfig.proofServer),
     relayURL: new URL(opts.networkConfig.node.replace(/^http/, 'ws')),
@@ -175,4 +179,130 @@ export async function persistWalletState(
   }
 
   saveWalletState(network, statePayload, { cwd });
+}
+
+// ─── Resilient Sync Wait ────────────────────────────────────────────────────
+// A fresh preprod wallet replays the full chain via the indexer WS, which takes
+// 40-75+ min. The SDK retries transient `Wallet.Sync` failures internally, so a
+// bare `waitForSyncedState()` looks hung for an hour while printing
+// `Wallet.Sync: [object Object]` (an Effect TaggedError that stringifies
+// poorly) plus benign `RPC-CORE ... Normal Closure` reconnect noise on startup.
+// This helper adds: per-wallet progress, readable error details, a configurable
+// timeout, and periodic state snapshots so a killed/restarted run resumes from
+// cache instead of replaying from genesis again.
+
+export interface SyncWaitOptions {
+  timeoutMs?: number;
+  progressIntervalMs?: number;
+  snapshotIntervalMs?: number;
+  cwd?: string;
+  onProgress?: (line: string) => void;
+}
+
+function syncErrorDetail(err: unknown): string {
+  if (err instanceof Error) {
+    const tagged = (err as { _tag?: unknown })._tag;
+    const cause = (err as { cause?: unknown }).cause;
+    const base = err.message && err.message !== '[object Object]' ? err.message : String(err);
+    const prefix = typeof tagged === 'string' ? `${tagged}: ` : '';
+    return cause == null || cause === err ? `${prefix}${base}` : `${prefix}${base} | caused by: ${syncErrorDetail(cause)}`;
+  }
+  if (typeof err === 'object' && err !== null) {
+    const tagged = (err as { _tag?: unknown })._tag;
+    const message = (err as { message?: unknown }).message;
+    const cause = (err as { cause?: unknown }).cause;
+    try {
+      const parts: string[] = [];
+      if (typeof tagged === 'string') parts.push(tagged);
+      if (typeof message === 'string' && message !== '[object Object]') parts.push(message);
+      if (cause != null) parts.push(`caused by: ${syncErrorDetail(cause)}`);
+      if (parts.length > 0) return parts.join(': ');
+      return JSON.stringify(err, (_, v) => (typeof v === 'bigint' ? `${v}n` : v));
+    } catch {
+      return String(err);
+    }
+  }
+  return String(err);
+}
+
+function childProgressFragment(label: string, child: unknown): string | null {
+  const progress = (child as { state?: { progress?: unknown } } | null)?.state?.progress as
+    | { appliedIndex?: unknown; highestRelevantWalletIndex?: unknown; isConnected?: unknown }
+    | undefined;
+  if (!progress) return null;
+  const applied = typeof progress.appliedIndex === 'bigint' ? progress.appliedIndex.toString() : '?';
+  const tip = typeof progress.highestRelevantWalletIndex === 'bigint' ? progress.highestRelevantWalletIndex.toString() : '?';
+  const conn = progress.isConnected === true ? '' : ' (disconnected)';
+  return `${label} ${applied}/${tip}${conn}`;
+}
+
+export function describeSyncProgress(facadeState: unknown): string {
+  const s = facadeState as { shielded?: unknown; unshielded?: unknown; dust?: unknown } | null;
+  if (!s) return 'no state yet';
+  const parts = [
+    childProgressFragment('shielded', s.shielded),
+    childProgressFragment('unshielded', s.unshielded),
+    childProgressFragment('dust', s.dust),
+  ].filter((p): p is string => p !== null);
+  return parts.length > 0 ? parts.join(' | ') : 'no state yet';
+}
+
+export async function waitForSyncedWalletState(
+  network: NetworkId,
+  context: WalletContext,
+  opts: SyncWaitOptions = {},
+): Promise<Awaited<ReturnType<WalletContext['wallet']['waitForSyncedState']>>> {
+  const envTimeout = Number(process.env.MIDNIGHT_SYNC_TIMEOUT_MS);
+  const timeoutMs =
+    opts.timeoutMs ?? (Number.isFinite(envTimeout) && envTimeout > 0 ? envTimeout : 120 * 60 * 1000);
+  const progressIntervalMs = opts.progressIntervalMs ?? 15_000;
+  const snapshotIntervalMs = opts.snapshotIntervalMs ?? 60_000;
+  const report = opts.onProgress ?? ((line: string) => process.stdout.write(`${line}\n`));
+
+  let latest: unknown;
+  const subscription = context.wallet.state().subscribe({
+    next: (s) => {
+      latest = s;
+    },
+    error: (err) => {
+      process.stderr.write(`  Wallet state stream error (sync continues): ${syncErrorDetail(err)}\n`);
+    },
+  });
+
+  const startedAt = Date.now();
+  let lastSnapshotAt = 0;
+  const progressTimer = setInterval(() => {
+    const elapsedMin = ((Date.now() - startedAt) / 60_000).toFixed(1);
+    report(`  Sync in progress... (${elapsedMin} min elapsed) ${describeSyncProgress(latest)}`);
+    if (Date.now() - lastSnapshotAt >= snapshotIntervalMs) {
+      lastSnapshotAt = Date.now();
+      persistWalletState(network, context, opts.cwd).catch((err: unknown) => {
+        process.stderr.write(`  Warning: periodic wallet snapshot failed (${syncErrorDetail(err)})\n`);
+      });
+    }
+  }, progressIntervalMs);
+
+  try {
+    const synced = await Promise.race([
+      context.wallet.waitForSyncedState().catch((err: unknown) => {
+        throw new Error(`Wallet sync failed: ${syncErrorDetail(err)}`);
+      }),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => {
+          reject(
+            new Error(
+              `Wallet sync timed out after ${Math.round(timeoutMs / 60_000)} min ` +
+                `(configure with MIDNIGHT_SYNC_TIMEOUT_MS). Last progress: ${describeSyncProgress(latest)}. ` +
+                `A partial snapshot was saved — re-run to resume from cache instead of genesis.`,
+            ),
+          );
+        }, timeoutMs);
+      }),
+    ]);
+    await persistWalletState(network, context, opts.cwd);
+    return synced;
+  } finally {
+    clearInterval(progressTimer);
+    subscription.unsubscribe();
+  }
 }

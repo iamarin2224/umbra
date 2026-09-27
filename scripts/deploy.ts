@@ -21,14 +21,9 @@ import { levelPrivateStateProvider } from '@midnight-ntwrk/midnight-js-level-pri
 import { NodeZkConfigProvider } from '@midnight-ntwrk/midnight-js-node-zk-config-provider';
 
 import { resolveNetwork, getOrCreateWallet, formatWalletBackupNotice, recordDeployment } from '../src/network.js';
-import { createWallet, persistWalletState, unshieldedToken, type WalletContext } from '../src/wallet.js';
+import { createWallet, persistWalletState, unshieldedToken, waitForSyncedWalletState, type WalletContext } from '../src/wallet.js';
 
-function encodeStringToBytes32(textValue: string): Uint8Array {
-  const rawBytes = new TextEncoder().encode(textValue);
-  const outBuffer = new Uint8Array(32);
-  outBuffer.set(rawBytes.slice(0, 32));
-  return outBuffer;
-}
+import { encodeStringToBytes32 } from '../src/escrow/witnesses.js';
 
 // @ts-expect-error WebSocket polyfill for wallet client
 globalThis.WebSocket = WebSocket;
@@ -53,11 +48,23 @@ async function waitForProofServer(maxAttempts = 60, intervalDelayMs = 2000): Pro
       await fetch(networkConfig.proofServer, {
         signal: AbortSignal.timeout(3000),
       });
+      // Any HTTP response (even 404) means something is listening on :6300.
       return true;
     } catch (err: any) {
       const code = err?.cause?.code || err?.code || '';
-      if (code !== 'ECONNREFUSED' && code !== 'UND_ERR_CONNECT_TIMEOUT' && code !== 'UND_ERR_SOCKET') {
-        return true;
+      const isConnectFailure =
+        code === 'ECONNREFUSED' ||
+        code === 'UND_ERR_CONNECT_TIMEOUT' ||
+        code === 'UND_ERR_SOCKET' ||
+        code === 'ETIMEDOUT' ||
+        code === 'ABORT_ERR' ||
+        err?.name === 'TimeoutError' ||
+        err?.name === 'AbortError' ||
+        /fetch failed|connect ECONNREFUSED|network/i.test(String(err?.message || ''));
+      if (!isConnectFailure) {
+        // Unknown failure — do not pretend the server is up.
+        console.error(`\n  Proof server probe error: ${err?.message || err}`);
+        return false;
       }
     }
     if (attempt < maxAttempts) {
@@ -152,16 +159,11 @@ async function main() {
   }
 
   console.log('  Syncing with network state...');
-  const syncStartTime = Date.now();
-  const syncInterval = setInterval(() => {
-    const elapsedSeconds = Math.round((Date.now() - syncStartTime) / 1000);
-    process.stdout.write(`\r  Sync in progress... (${elapsedSeconds}s elapsed)   `);
-  }, 5000);
-  const syncedWalletState = await walletCtx.wallet.waitForSyncedState();
-  clearInterval(syncInterval);
-  process.stdout.write('\r  Synchronized with network successfully.                     \n');
-
-  await persistWalletState(network, walletCtx);
+  console.log('  (Fresh preprod wallets replay full chain history: 40-75+ min expected.');
+  console.log('   Transient `Wallet.Sync` lines during catch-up are retried internally;');
+  console.log('   `RPC-CORE ... Normal Closure` on startup is benign reconnect noise.)');
+  const syncedWalletState = await waitForSyncedWalletState(network, walletCtx);
+  process.stdout.write('  Synchronized with network successfully.\n');
 
   const walletBech32Address = walletCtx.unshieldedKeystore.getBech32Address();
   const currentTNightBalance = syncedWalletState.unshielded.balances[unshieldedToken().raw] ?? 0n;
@@ -220,13 +222,27 @@ async function main() {
 
   if (dustState.dust.balance(new Date()) === 0n) {
     console.log('  Awaiting DUST token generation...');
-    await Rx.firstValueFrom(
-      walletCtx.wallet.state().pipe(
-        Rx.throttleTime(5000),
-        Rx.filter((s) => s.isSynced),
-        Rx.filter((s) => s.dust.balance(new Date()) > 0n),
-      ),
-    );
+    const dustEnvTimeout = Number(process.env.MIDNIGHT_DUST_TIMEOUT_MS);
+    const dustTimeoutMs =
+      Number.isFinite(dustEnvTimeout) && dustEnvTimeout > 0 ? dustEnvTimeout : 30 * 60 * 1000;
+    try {
+      await Rx.firstValueFrom(
+        walletCtx.wallet.state().pipe(
+          Rx.throttleTime(5000),
+          Rx.filter((s) => s.isSynced),
+          Rx.filter((s) => s.dust.balance(new Date()) > 0n),
+          Rx.timeout(dustTimeoutMs),
+        ),
+      );
+    } catch (err: any) {
+      if (err?.name === 'TimeoutError') {
+        throw new Error(
+          `Timed out after ${Math.round(dustTimeoutMs / 60_000)} min waiting for DUST generation ` +
+            `(configure with MIDNIGHT_DUST_TIMEOUT_MS). Fund the wallet with tNIGHT and ensure its NIGHT UTXOs are registered.`,
+        );
+      }
+      throw err;
+    }
   }
   console.log('  DUST tokens ready!\n');
 
@@ -302,7 +318,9 @@ async function main() {
       }
 
       if (isDustShortage) {
-        const liveState = await walletCtx.wallet.waitForSyncedState();
+        const liveState = await Rx.firstValueFrom(
+          walletCtx.wallet.state().pipe(Rx.filter((s) => s.isSynced), Rx.timeout(5 * 60 * 1000)),
+        );
         const liveDust = liveState.dust.balance(new Date());
         if (attempt < MAX_ATTEMPTS) {
           console.log(`  DUST balance: ${liveDust.toLocaleString()} (attempt ${attempt}/${MAX_ATTEMPTS}); retrying in ${RETRY_DELAY_MS / 1000}s...`);
