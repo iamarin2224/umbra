@@ -4,18 +4,18 @@
   /* Dark Void Theme (Default) */
   --bg-canvas: #06080c;
   --bg-subtle: #0c0e14;
-  --bg-card: rgba(10, 13, 20, 0.72);
-  --bg-card-hover: rgba(16, 20, 30, 0.85);
+  /* Apple Liquid Glass Surfaces (Enhanced Translucency & Fluid Clarity) */
+  --bg-card: rgba(12, 16, 26, 0.38);
+  --bg-card-hover: rgba(18, 24, 38, 0.52);
 
-  /* Smoked Obsidian Frosted Glass Surfaces */
-  --glass-base: rgba(10, 13, 20, 0.65);
-  --glass-surface: rgba(14, 18, 28, 0.75);
-  --glass-hover: rgba(20, 26, 40, 0.85);
-  --glass-active: rgba(26, 34, 52, 0.92);
+  --glass-base: rgba(10, 14, 24, 0.36);
+  --glass-surface: rgba(14, 20, 34, 0.46);
+  --glass-hover: rgba(20, 28, 48, 0.58);
+  --glass-active: rgba(26, 36, 60, 0.68);
 
-  /* Precise Ultra-Thin Hairline Borders */
-  --border-whisper: rgba(255, 255, 255, 0.08);
-  --border-sheen: rgba(255, 255, 255, 0.16);
+  /* Precise Ultra-Thin Hairline Borders & Specular Sheen */
+  --border-whisper: rgba(255, 255, 255, 0.1);
+  --border-sheen: rgba(255, 255, 255, 0.22);
   --border-active: rgba(0, 240, 255, 0.4);
 
   /* Luminous Accents */
@@ -56,16 +56,16 @@
 html.light, body.light {
   --bg-canvas: #f7f7f7;
   --bg-subtle: #ececef;
-  --bg-card: rgba(255, 255, 255, 0.85);
-  --bg-card-hover: rgba(255, 255, 255, 0.95);
+  --bg-card: rgba(255, 255, 255, 0.52);
+  --bg-card-hover: rgba(255, 255, 255, 0.68);
 
-  --glass-base: rgba(255, 255, 255, 0.7);
-  --glass-surface: rgba(255, 255, 255, 0.82);
-  --glass-hover: rgba(255, 255, 255, 0.94);
+  --glass-base: rgba(255, 255, 255, 0.48);
+  --glass-surface: rgba(255, 255, 255, 0.62);
+  --glass-hover: rgba(255, 255, 255, 0.74);
   --glass-active: #ffffff;
 
   --border-whisper: rgba(0, 0, 0, 0.08);
-  --border-sheen: rgba(0, 0, 0, 0.14);
+  --border-sheen: rgba(0, 0, 0, 0.16);
   --border-active: rgba(2, 132, 199, 0.5);
 
   --text-hero: #111111;
@@ -135,32 +135,55 @@ html, body {
   color: #ffffff;
 }
 
-/* Glassmorphism & Spotlight System */
+/* ── Apple Liquid Glassmorphism System ── */
 .glass-card {
   position: relative;
-  background: var(--glass-base);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.01) 100%
+  ), var(--glass-base);
+  backdrop-filter: blur(36px) saturate(210%) brightness(108%);
+  -webkit-backdrop-filter: blur(36px) saturate(210%) brightness(108%);
   border: 1px solid var(--border-whisper);
-  border-radius: 14px;
+  border-radius: 16px;
   overflow: hidden;
-  transition: border-color 0.25s var(--ease-apple), transform 0.25s var(--ease-apple), box-shadow 0.25s var(--ease-apple);
+  box-shadow:
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 16px 40px rgba(0, 0, 0, 0.35);
+  transition:
+    border-color 0.25s var(--ease-apple),
+    transform 0.25s var(--ease-apple),
+    box-shadow 0.25s var(--ease-apple),
+    background 0.25s var(--ease-apple);
 }
 
 .glass-card:hover {
   border-color: var(--border-sheen);
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+  box-shadow:
+    inset 0 1px 2px 0 rgba(255, 255, 255, 0.3),
+    inset 0 0 0 1px rgba(0, 240, 255, 0.2),
+    0 24px 50px rgba(0, 0, 0, 0.45);
 }
 
 /* Dynamic Cursor-Following Spotlight Glow */
 .spotlight-card {
   position: relative;
-  background: var(--glass-base);
-  backdrop-filter: blur(28px) saturate(180%);
-  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.01) 100%
+  ), var(--glass-base);
+  backdrop-filter: blur(36px) saturate(210%) brightness(108%);
+  -webkit-backdrop-filter: blur(36px) saturate(210%) brightness(108%);
   border: 1px solid var(--border-whisper);
-  border-radius: 14px;
+  border-radius: 16px;
   overflow: hidden;
+  box-shadow:
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.18),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.04),
+    0 16px 40px rgba(0, 0, 0, 0.35);
   transition: all 0.25s var(--ease-apple);
 }
 
@@ -174,8 +197,8 @@ html, body {
   border-radius: inherit;
   background: radial-gradient(
     400px circle at var(--mouse-x, 50%) var(--mouse-y, 50%),
-    rgba(0, 240, 255, 0.08),
-    transparent 60%
+    rgba(0, 240, 255, 0.12),
+    transparent 65%
   );
   opacity: 0;
   transition: opacity 0.4s ease;
@@ -189,14 +212,17 @@ html, body {
 
 .hairline-card {
   border: 1px solid var(--border-whisper);
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.02);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.025);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
   transition: all 0.2s var(--ease-apple);
 }
 
 .hairline-card:hover {
   border-color: var(--border-sheen);
-  background: rgba(255, 255, 255, 0.04);
+  background: rgba(255, 255, 255, 0.05);
 }
 
 /* Floating Dynamic Island Notch Bar */
@@ -214,3 +240,65 @@ input:focus, textarea:focus, select:focus {
   box-shadow: 0 0 0 1px rgba(0, 240, 255, 0.25) !important;
   outline: none;
 }
+
+/* ── Responsive Display Utilities ── */
+.mobile-only {
+  display: flex !important;
+}
+.desktop-only {
+  display: flex !important;
+}
+
+@media (max-width: 767px) {
+  .desktop-only {
+    display: none !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .mobile-only {
+    display: none !important;
+  }
+}
+
+.sm-badge {
+  display: none !important;
+}
+@media (min-width: 640px) {
+  .sm-badge {
+    display: inline-flex !important;
+  }
+}
+
+/* ── Hero Grid Responsive Layout ── */
+.hero-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 36px;
+  align-items: center;
+}
+
+@media (min-width: 900px) {
+  .hero-grid {
+    grid-template-columns: 1.15fr 0.85fr;
+    gap: 48px;
+  }
+}
+
+/* ── Circuits Grid Responsive Layout ── */
+.circuits-grid {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 24px;
+}
+
+@media (min-width: 960px) {
+  .circuits-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+
+

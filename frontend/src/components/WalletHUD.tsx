@@ -18,6 +18,17 @@ export const WalletHUD: React.FC = () => {
   const [copied, setCopied] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const [isMobile, setIsMobile] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.innerWidth < 768 : false
+  );
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
 
   useEffect(() => {
     const handleOutsideClick = (e: MouseEvent) => {
@@ -37,6 +48,14 @@ export const WalletHUD: React.FC = () => {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  // Compact on mobile: only last 4 chars (e.g. "..9qjr") to prevent notch bar overflow
+  // Desktop: standard readable format (e.g. "mn_addr...9qjr")
+  const displayAddress = address
+    ? isMobile
+      ? `..${address.slice(-4)}`
+      : `${address.slice(0, 7)}...${address.slice(-4)}`
+    : 'Shielded';
+
   if (!isConnected) {
     return (
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -50,8 +69,8 @@ export const WalletHUD: React.FC = () => {
             fontFamily: 'var(--font-mono)',
             fontSize: '11px',
             fontWeight: 600,
-            letterSpacing: '0.12em',
-            padding: '7px 20px',
+            letterSpacing: '0.1em',
+            padding: '6px 14px',
             borderRadius: 9999,
             cursor: isConnecting ? 'wait' : 'pointer',
             transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
@@ -59,6 +78,7 @@ export const WalletHUD: React.FC = () => {
             alignItems: 'center',
             gap: '6px',
             textTransform: 'uppercase',
+            flexShrink: 0,
           }}
         >
           {isConnecting ? (
@@ -77,7 +97,10 @@ export const WalletHUD: React.FC = () => {
               <span>CONNECTING...</span>
             </>
           ) : (
-            <span>CONNECT</span>
+            <>
+              <Wallet size={13} style={{ flexShrink: 0 }} />
+              <span>CONNECT</span>
+            </>
           )}
         </button>
 
@@ -103,6 +126,7 @@ export const WalletHUD: React.FC = () => {
       {/* Wallet Trigger Button */}
       <button
         onClick={() => setDropdownOpen(!dropdownOpen)}
+        title={address || 'Connected Midnight Wallet'}
         style={{
           background: 'rgba(255, 255, 255, 0.05)',
           border: '1px solid rgba(16, 185, 129, 0.35)',
@@ -111,12 +135,14 @@ export const WalletHUD: React.FC = () => {
           fontSize: '11px',
           fontWeight: 600,
           letterSpacing: '0.08em',
-          padding: '6px 14px',
+          padding: isMobile ? '5px 10px' : '6px 14px',
           borderRadius: 9999,
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
-          gap: '8px',
+          gap: isMobile ? '6px' : '8px',
+          whiteSpace: 'nowrap',
+          flexShrink: 0,
           transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
       >
@@ -127,15 +153,17 @@ export const WalletHUD: React.FC = () => {
             borderRadius: '50%',
             background: 'var(--emerald)',
             boxShadow: '0 0 6px var(--emerald)',
+            flexShrink: 0,
           }}
         />
-        <span>{shortAddress || 'Shielded'}</span>
+        <span>{displayAddress}</span>
         <ChevronDown
-          size={12}
+          size={isMobile ? 11 : 12}
           color="var(--text-sub)"
           style={{
             transform: dropdownOpen ? 'rotate(180deg)' : 'none',
             transition: 'transform 0.2s ease',
+            flexShrink: 0,
           }}
         />
       </button>
@@ -153,6 +181,8 @@ export const WalletHUD: React.FC = () => {
               top: 'calc(100% + 6px)',
               right: 0,
               width: '290px',
+              maxWidth: 'calc(100vw - 32px)',
+              boxSizing: 'border-box',
               background: 'rgba(11, 14, 20, 0.96)',
               backdropFilter: 'blur(20px)',
               WebkitBackdropFilter: 'blur(20px)',

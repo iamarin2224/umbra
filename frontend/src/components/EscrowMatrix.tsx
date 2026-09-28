@@ -48,7 +48,7 @@ export const EscrowMatrix: React.FC<EscrowMatrixProps> = ({
       <div
         style={{
           display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))',
           gap: 12,
         }}
       >
@@ -124,38 +124,44 @@ export const EscrowMatrix: React.FC<EscrowMatrixProps> = ({
         ))}
       </div>
 
-      {/* ── Cohesive Bento Toolbar ── */}
+      {/* ── Apple Liquid Glass Bento Toolbar ── */}
       <div
+        className="glass-card"
         style={{
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
-          gap: 12,
+          gap: 14,
           flexWrap: 'wrap',
-          background: 'var(--glass-base)',
-          backdropFilter: 'blur(24px)',
-          WebkitBackdropFilter: 'blur(24px)',
+          background: 'linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.01) 100%), var(--glass-base)',
+          backdropFilter: 'blur(36px) saturate(210%) brightness(108%)',
+          WebkitBackdropFilter: 'blur(36px) saturate(210%) brightness(108%)',
           border: '1px solid var(--border-whisper)',
-          borderRadius: 14,
-          padding: '10px 14px',
+          borderRadius: 16,
+          padding: '12px 18px',
+          boxShadow: 'inset 0 1px 1px 0 rgba(255, 255, 255, 0.18), inset 0 0 0 1px rgba(255, 255, 255, 0.04), 0 16px 40px rgba(0, 0, 0, 0.35)',
         }}
       >
-        {/* Search Input */}
+        {/* Apple Liquid Glass Search Input */}
         <div
           style={{
             display: 'flex',
             alignItems: 'center',
-            gap: 8,
-            background: 'rgba(255, 255, 255, 0.03)',
-            border: '1px solid var(--border-whisper)',
-            borderRadius: 10,
-            padding: '7px 14px',
+            gap: 10,
+            background: 'rgba(255, 255, 255, 0.04)',
+            border: '1px solid rgba(255, 255, 255, 0.12)',
+            borderRadius: 12,
+            padding: '8px 16px',
             minWidth: 260,
-            flex: '1 1 260px',
-            maxWidth: 380,
+            flex: '1 1 280px',
+            maxWidth: 440,
+            backdropFilter: 'blur(24px) saturate(180%)',
+            WebkitBackdropFilter: 'blur(24px) saturate(180%)',
+            boxShadow: 'inset 0 1px 1px 0 rgba(255, 255, 255, 0.12)',
+            transition: 'border-color 0.2s var(--ease-apple), box-shadow 0.2s var(--ease-apple)',
           }}
         >
-          <Search size={14} color="var(--cyan)" />
+          <Search size={14} color="var(--cyan)" style={{ flexShrink: 0 }} />
           <input
             type="text"
             placeholder="Search enclave ID, addresses, witnesses..."
@@ -211,7 +217,7 @@ export const EscrowMatrix: React.FC<EscrowMatrixProps> = ({
           layout
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 300px), 1fr))',
             gap: 16,
           }}
         >

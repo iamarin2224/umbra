@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Plus } from 'lucide-react';
 import { CanvasFluidBackground } from './components/CanvasFluidBackground';
 import { FluidCursor } from './components/FluidCursor';
 import { HeaderHUD, NavTab } from './components/HeaderHUD';
@@ -127,9 +129,11 @@ export function App() {
           padding: '90px 0 60px',
           position: 'relative',
           zIndex: 10,
+          overflowX: 'hidden',
+          width: '100%',
         }}
       >
-        <div style={{ maxWidth: '1360px', width: '100%', margin: '0 auto', padding: '0 24px' }}>
+        <div style={{ maxWidth: '1360px', width: '100%', margin: '0 auto', padding: '0 clamp(16px, 3.5vw, 24px)', boxSizing: 'border-box' }}>
           {/* Error Banner */}
           {error && (
             <div
@@ -167,65 +171,113 @@ export function App() {
             {/* 2. APP VIEW (Live Enclave Workspace) */}
             {activeTab === 'app' && (
               <section style={{ paddingTop: '20px', marginBottom: '80px' }}>
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-end',
-                    justifyContent: 'space-between',
-                    marginBottom: 24,
-                    flexWrap: 'wrap',
-                    gap: 16,
-                  }}
-                >
-                  <div>
-                    <span
+                <div style={{ textAlign: 'center', marginBottom: 36 }}>
+                  <motion.div
+                    initial={{ opacity: 0, y: 16 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+                  >
+                    {/* Category Tag */}
+                    <div
                       style={{
-                        fontFamily: 'var(--font-mono)',
-                        fontSize: 10,
-                        letterSpacing: '0.15em',
-                        color: 'var(--cyan)',
-                        textTransform: 'uppercase',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 8,
+                        padding: '4px 14px',
+                        borderRadius: 9999,
+                        background: 'rgba(0, 240, 255, 0.06)',
+                        border: '1px solid rgba(0, 240, 255, 0.22)',
+                        marginBottom: 16,
                       }}
                     >
-                      Live Enclaves
-                    </span>
-                    <h2
+                      <span
+                        style={{
+                          width: 6,
+                          height: 6,
+                          borderRadius: '50%',
+                          background: 'var(--cyan)',
+                          boxShadow: '0 0 8px var(--cyan)',
+                        }}
+                      />
+                      <span
+                        style={{
+                          fontFamily: 'var(--font-mono)',
+                          fontSize: 10,
+                          letterSpacing: '0.16em',
+                          color: 'var(--cyan)',
+                          textTransform: 'uppercase',
+                          fontWeight: 600,
+                        }}
+                      >
+                        Midnight Network • Live Enclaves
+                      </span>
+                    </div>
+
+                    {/* Majestic Title */}
+                    <h1
                       style={{
                         fontFamily: 'var(--font-editorial)',
                         fontStyle: 'italic',
-                        fontSize: 32,
+                        fontSize: 'clamp(32px, 5vw, 60px)',
                         fontWeight: 800,
                         color: 'var(--text-hero)',
-                        marginTop: 4,
+                        lineHeight: 1.1,
+                        letterSpacing: '-0.02em',
+                        maxWidth: 820,
+                        margin: '0 auto 16px',
                       }}
                     >
                       Active Escrow Agreements
-                    </h2>
-                  </div>
+                    </h1>
 
-                  <button
-                    onClick={() => {
-                      soundFx.playOpen();
-                      handleOpenCreateWithPrefill();
-                    }}
-                    style={{
-                      padding: '10px 20px',
-                      borderRadius: 9999,
-                      background: 'rgba(0, 240, 255, 0.1)',
-                      border: '1px solid rgba(0, 240, 255, 0.35)',
-                      color: 'var(--cyan)',
-                      fontFamily: 'var(--font-mono)',
-                      fontSize: 11,
-                      fontWeight: 700,
-                      letterSpacing: '0.08em',
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: 6,
-                    }}
-                  >
-                    <span>+ DEPLOY NEW ESCROW</span>
-                  </button>
+                    {/* Monospace Subtitle */}
+                    <p
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 12,
+                        letterSpacing: '0.08em',
+                        color: 'var(--text-sub)',
+                        maxWidth: 640,
+                        margin: '0 auto 28px',
+                        lineHeight: 1.7,
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      Verifiable zero-knowledge state machine instances settling autonomously on Midnight.
+                    </p>
+
+                    {/* Prominent Centered Deploy Button */}
+                    <div style={{ display: 'flex', justifyContent: 'center' }}>
+                      <motion.button
+                        whileHover={{ scale: 1.03, boxShadow: '0 0 24px rgba(0, 240, 255, 0.35)' }}
+                        whileTap={{ scale: 0.97 }}
+                        onClick={() => {
+                          soundFx.playOpen();
+                          handleOpenCreateWithPrefill();
+                        }}
+                        style={{
+                          padding: '12px 28px',
+                          borderRadius: 9999,
+                          background: 'linear-gradient(135deg, rgba(0, 240, 255, 0.15), rgba(112, 0, 255, 0.15))',
+                          border: '1px solid rgba(0, 240, 255, 0.45)',
+                          color: '#fff',
+                          fontFamily: 'var(--font-mono)',
+                          fontSize: 12,
+                          fontWeight: 700,
+                          letterSpacing: '0.08em',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: 8,
+                          boxShadow: '0 4px 20px rgba(0, 0, 0, 0.25), inset 0 1px 1px rgba(255, 255, 255, 0.2)',
+                          transition: 'border-color 0.2s, background 0.2s',
+                        }}
+                      >
+                        <Plus size={16} color="var(--cyan)" />
+                        <span>DEPLOY NEW ESCROW</span>
+                      </motion.button>
+                    </div>
+                  </motion.div>
                 </div>
 
                 <EscrowMatrix
@@ -253,7 +305,7 @@ export function App() {
             {/* 4. GUIDE VIEW (Architecture Specification) */}
             {activeTab === 'guide' && (
               <section style={{ paddingTop: '20px', marginBottom: '80px' }}>
-                <AboutUmbraView />
+                <AboutUmbraView onLaunchApp={() => handleNavigate('app')} />
               </section>
             )}
           </PageTransition>

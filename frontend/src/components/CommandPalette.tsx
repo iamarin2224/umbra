@@ -240,8 +240,19 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
   return (
     <AnimatePresence>
       <div
-        className="fixed inset-0 z-[99999] flex items-start justify-center pt-20 sm:pt-28 px-4"
         style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          zIndex: 99999,
+          display: 'flex',
+          alignItems: 'flex-start',
+          justifyContent: 'center',
+          paddingTop: '100px',
+          paddingLeft: '16px',
+          paddingRight: '16px',
           background: 'rgba(0, 0, 0, 0.72)',
           backdropFilter: 'blur(16px)',
           WebkitBackdropFilter: 'blur(16px)',

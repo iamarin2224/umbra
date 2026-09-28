@@ -82,8 +82,11 @@ export const CustomCursor: React.FC = () => {
     <>
       {/* Outer Follower Ring */}
       <motion.div
-        className="pointer-events-none fixed top-0 left-0 hidden md:block"
+        className="desktop-only"
         style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
           x: outerSpringX,
           y: outerSpringY,
           translateX: '-50%',
@@ -118,8 +121,11 @@ export const CustomCursor: React.FC = () => {
 
       {/* Inner Center Dot */}
       <motion.div
-        className="pointer-events-none fixed top-0 left-0 hidden md:block"
+        className="desktop-only"
         style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
           x: innerSpringX,
           y: innerSpringY,
           translateX: '-50%',

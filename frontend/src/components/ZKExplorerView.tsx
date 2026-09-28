@@ -76,58 +76,84 @@ export circuit release(): [] {
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -8 }}
       transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-      style={{ display: 'flex', flexDirection: 'column', gap: 20 }}
+      style={{ display: 'flex', flexDirection: 'column', gap: 32 }}
     >
-      {/* Header */}
+      {/* ── Section Header ── */}
       <div>
+        <span
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 10,
+            letterSpacing: '0.15em',
+            color: 'var(--cyan)',
+            textTransform: 'uppercase',
+          }}
+        >
+          Circuit Enclave • Compact v0.23 Runtime
+        </span>
         <h2
           style={{
             fontFamily: 'var(--font-editorial)',
             fontStyle: 'italic',
-            fontSize: '28px',
+            fontSize: 'clamp(28px, 4vw, 36px)',
             fontWeight: 800,
             color: 'var(--text-hero)',
             letterSpacing: '-0.02em',
+            marginTop: 4,
           }}
         >
           Circuit Lab & Compact Smart Contract Explorer
         </h2>
-        <p style={{ fontSize: '13px', color: 'var(--text-sub)', marginTop: '4px' }}>
-          Inspect the zero-knowledge escrow circuits compiled for Midnight Network and test off-chain witness commitment hashing.
+        <p
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: 12,
+            color: 'var(--text-sub)',
+            marginTop: 6,
+            lineHeight: 1.6,
+          }}
+        >
+          Inspect zero-knowledge escrow circuits compiled for Midnight and test off-chain witness commitment hashing.
         </p>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '16px' }}>
+      <div className="circuits-grid">
         {/* Compact Code Sandbox */}
         <SpotlightCard
-          spotlightColor="rgba(0, 240, 255, 0.12)"
+          spotlightColor="rgba(0, 240, 255, 0.14)"
           anchorColor="rgba(0, 240, 255, 0.3)"
           style={{
-            padding: '22px',
-            borderRadius: '16px',
+            padding: 'clamp(16px, 4vw, 24px)',
+            borderRadius: 16,
             display: 'flex',
             flexDirection: 'column',
+            width: '100%',
+            minWidth: 0,
+            boxSizing: 'border-box',
           }}
         >
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16, flexWrap: 'wrap', gap: 8 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Code2 size={16} color="var(--cyan)" />
-              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-hero)', fontFamily: 'var(--font-mono)' }}>
+              <span style={{ fontSize: 13, fontWeight: 700, color: 'var(--text-hero)', fontFamily: 'var(--font-mono)' }}>
                 EscrowEnclave.compact
               </span>
             </div>
             <button
               onClick={() => handleCopy(compactCode, 'code')}
               style={{
-                background: 'transparent',
-                border: 'none',
+                background: 'rgba(255, 255, 255, 0.04)',
+                border: '1px solid rgba(255, 255, 255, 0.1)',
+                padding: '4px 10px',
+                borderRadius: 6,
                 color: copiedField === 'code' ? 'var(--emerald)' : 'var(--cyan)',
-                fontSize: '11px',
+                fontSize: 11,
                 fontFamily: 'var(--font-mono)',
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
-                gap: 4,
+                gap: 5,
+                transition: 'all 0.15s ease',
               }}
             >
               {copiedField === 'code' ? <Check size={12} /> : <Copy size={12} />}
@@ -137,47 +163,62 @@ export circuit release(): [] {
 
           <div
             style={{
-              background: 'rgba(0, 0, 0, 0.5)',
-              border: '1px solid var(--border-whisper)',
-              borderRadius: '10px',
+              background: 'rgba(0, 0, 0, 0.3)',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: 12,
               padding: '14px',
               fontFamily: 'var(--font-mono)',
-              fontSize: '11px',
+              fontSize: 11,
               color: '#d1d5db',
               overflowX: 'auto',
-              maxHeight: '380px',
-              lineHeight: 1.6,
+              maxHeight: 400,
+              maxWidth: '100%',
+              minWidth: 0,
+              boxSizing: 'border-box',
+              lineHeight: 1.65,
+              boxShadow: 'inset 0 1px 1px 0 rgba(255, 255, 255, 0.05)',
             }}
           >
-            <pre>{compactCode}</pre>
+            <pre style={{ margin: 0, whiteSpace: 'pre', overflowX: 'auto', maxWidth: '100%' }}>{compactCode}</pre>
           </div>
         </SpotlightCard>
 
         {/* Live Witness & Commitment Generator */}
         <SpotlightCard
-          spotlightColor="rgba(192, 132, 252, 0.12)"
+          spotlightColor="rgba(192, 132, 252, 0.14)"
           anchorColor="rgba(192, 132, 252, 0.3)"
           style={{
-            padding: '22px',
-            borderRadius: '16px',
+            padding: 'clamp(16px, 4vw, 24px)',
+            borderRadius: 16,
             display: 'flex',
             flexDirection: 'column',
-            gap: '16px',
+            gap: 18,
+            width: '100%',
+            minWidth: 0,
+            boxSizing: 'border-box',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <Terminal size={16} color="var(--amethyst)" />
-            <span style={{ fontSize: '14px', fontWeight: 600, color: 'var(--text-hero)' }}>
+            <span
+              style={{
+                fontFamily: 'var(--font-editorial)',
+                fontStyle: 'italic',
+                fontSize: 18,
+                fontWeight: 700,
+                color: 'var(--text-hero)',
+              }}
+            >
               Live Witness Commitment Calculator
             </span>
           </div>
 
-          <p style={{ fontSize: '12px', color: 'var(--text-sub)', lineHeight: 1.5 }}>
-            Witness data stays strictly in client memory. Only the evaluated <code style={{ color: 'var(--cyan)', fontFamily: 'var(--font-mono)' }}>persistentHash</code> commitment is submitted to the ledger.
+          <p style={{ fontSize: 12, color: 'var(--text-sub)', fontFamily: 'var(--font-mono)', lineHeight: 1.6 }}>
+            Witness data stays strictly in client memory. Only the evaluated <code style={{ color: 'var(--cyan)' }}>persistentHash</code> commitment is submitted to the Midnight ledger.
           </p>
 
           <div>
-            <label style={{ display: 'block', fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text-sub)', textTransform: 'uppercase', marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
               Condition Witness (Plaintext Secret)
             </label>
             <input
@@ -186,13 +227,14 @@ export circuit release(): [] {
               onChange={(e) => setCondWitness(e.target.value)}
               style={{
                 width: '100%',
-                padding: '9px 12px',
-                borderRadius: '8px',
-                background: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid var(--border-whisper)',
+                padding: '10px 14px',
+                borderRadius: 10,
+                background: 'rgba(255, 255, 255, 0.04)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
                 color: '#ffffff',
                 fontFamily: 'var(--font-mono)',
-                fontSize: '12px',
+                fontSize: 12,
+                outline: 'none',
               }}
             />
           </div>
@@ -201,11 +243,16 @@ export circuit release(): [] {
             className="hairline-card"
             style={{
               padding: '12px 14px',
-              borderRadius: '10px',
+              borderRadius: 12,
+              background: 'rgba(255, 255, 255, 0.02)',
+              maxWidth: '100%',
+              minWidth: 0,
+              boxSizing: 'border-box',
+              overflow: 'hidden',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-              <span style={{ fontSize: '10px', color: 'var(--text-faint)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 6 }}>
+              <span style={{ fontSize: 10, color: 'var(--text-faint)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                 Condition persistentHash Commitment
               </span>
               <button
@@ -214,7 +261,7 @@ export circuit release(): [] {
                   background: 'transparent',
                   border: 'none',
                   color: copiedField === 'condCommit' ? 'var(--emerald)' : 'var(--cyan)',
-                  fontSize: '10px',
+                  fontSize: 10,
                   fontFamily: 'var(--font-mono)',
                   cursor: 'pointer',
                   display: 'flex',
@@ -226,13 +273,13 @@ export circuit release(): [] {
                 <span>{copiedField === 'condCommit' ? 'Copied' : 'Copy'}</span>
               </button>
             </div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--cyan)', wordBreak: 'break-all' }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--cyan)', wordBreak: 'break-all', overflowWrap: 'anywhere', lineHeight: 1.5 }}>
               {condCommitment}
             </div>
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '11px', fontFamily: 'var(--font-mono)', color: 'var(--text-sub)', textTransform: 'uppercase', marginBottom: '6px' }}>
+            <label style={{ display: 'block', fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--text-faint)', textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
               Amount Value (tDUST)
             </label>
             <input
@@ -241,13 +288,15 @@ export circuit release(): [] {
               onChange={(e) => setAmtWitness(e.target.value)}
               style={{
                 width: '100%',
-                padding: '9px 12px',
-                borderRadius: '8px',
-                background: 'rgba(255, 255, 255, 0.03)',
-                border: '1px solid var(--border-whisper)',
+                padding: '10px 14px',
+                borderRadius: 10,
+                background: 'rgba(255, 255, 255, 0.04)',
+                border: '1px solid rgba(255, 255, 255, 0.12)',
                 color: '#ffffff',
                 fontFamily: 'var(--font-mono)',
-                fontSize: '12px',
+                fontSize: 12,
+                outline: 'none',
+                boxSizing: 'border-box',
               }}
             />
           </div>
@@ -256,11 +305,16 @@ export circuit release(): [] {
             className="hairline-card"
             style={{
               padding: '12px 14px',
-              borderRadius: '10px',
+              borderRadius: 12,
+              background: 'rgba(255, 255, 255, 0.02)',
+              maxWidth: '100%',
+              minWidth: 0,
+              boxSizing: 'border-box',
+              overflow: 'hidden',
             }}
           >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-              <span style={{ fontSize: '10px', color: 'var(--text-faint)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6, flexWrap: 'wrap', gap: 6 }}>
+              <span style={{ fontSize: 10, color: 'var(--text-faint)', fontFamily: 'var(--font-mono)', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                 Amount persistentHash Commitment
               </span>
               <button
@@ -269,7 +323,7 @@ export circuit release(): [] {
                   background: 'transparent',
                   border: 'none',
                   color: copiedField === 'amtCommit' ? 'var(--emerald)' : 'var(--amethyst)',
-                  fontSize: '10px',
+                  fontSize: 10,
                   fontFamily: 'var(--font-mono)',
                   cursor: 'pointer',
                   display: 'flex',
@@ -281,7 +335,7 @@ export circuit release(): [] {
                 <span>{copiedField === 'amtCommit' ? 'Copied' : 'Copy'}</span>
               </button>
             </div>
-            <div style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--amethyst)', wordBreak: 'break-all' }}>
+            <div style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--amethyst)', wordBreak: 'break-all', overflowWrap: 'anywhere', lineHeight: 1.5 }}>
               {amtCommitment}
             </div>
           </div>

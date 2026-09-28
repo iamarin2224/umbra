@@ -17,26 +17,30 @@ export const FooterHUD: React.FC<FooterHUDProps> = ({
         backdropFilter: 'blur(30px) saturate(180%)',
         WebkitBackdropFilter: 'blur(30px) saturate(180%)',
         borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-        padding: '64px 24px 36px',
+        padding: 'clamp(40px, 6vw, 64px) clamp(16px, 3.5vw, 24px) 36px',
         overflow: 'hidden',
         zIndex: 20,
         marginTop: 'auto',
+        boxSizing: 'border-box',
+        width: '100%',
       }}
     >
       <div
         style={{
           maxWidth: 1360,
+          width: '100%',
           margin: '0 auto',
           position: 'relative',
           zIndex: 2,
+          boxSizing: 'border-box',
         }}
       >
         {/* Top Grid: Brand & Links */}
         <div
           style={{
             display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-            gap: 48,
+            gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 240px), 1fr))',
+            gap: 'clamp(28px, 4vw, 48px)',
             marginBottom: 48,
           }}
         >
@@ -254,7 +258,7 @@ export const FooterHUD: React.FC<FooterHUDProps> = ({
             userSelect: 'none',
             pointerEvents: 'none',
             textAlign: 'center',
-            lineHeight: 0.85,
+            lineHeight: 0.9,
             margin: '20px 0',
           }}
         >
@@ -262,18 +266,19 @@ export const FooterHUD: React.FC<FooterHUDProps> = ({
             style={{
               fontFamily: 'var(--font-editorial)',
               fontStyle: 'italic',
-              fontSize: 'clamp(80px, 16vw, 220px)',
+              fontSize: 'clamp(36px, 14.5vw, 190px)',
               fontWeight: 900,
-              letterSpacing: '0.1em',
+              letterSpacing: 'clamp(0.04em, 1.2vw, 0.16em)',
               background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.04) 100%)',
               WebkitBackgroundClip: 'text',
               WebkitTextFillColor: 'transparent',
-              display: 'block',
+              display: 'inline-block',
+              maxWidth: '100%',
               whiteSpace: 'nowrap',
               filter: 'drop-shadow(0 0 30px rgba(0, 240, 255, 0.1))',
             }}
           >
-            U M B R A
+            UMBRA
           </span>
         </div>
 

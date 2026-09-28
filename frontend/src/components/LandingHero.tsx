@@ -31,16 +31,10 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
       }}
     >
       <div
-        style={{
-          width: '100%',
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(360px, 1fr))',
-          gap: '48px',
-          alignItems: 'center',
-        }}
+        className="hero-grid"
       >
         {/* ── Left Column: Interactive Editorial Headline & Actions ── */}
-        <div style={{ maxWidth: 640 }}>
+        <div style={{ maxWidth: 640, width: '100%', minWidth: 0 }}>
           {/* Top Decorative Line */}
           <div
             style={{
@@ -76,18 +70,20 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
             style={{
               fontFamily: 'var(--font-editorial)',
               fontStyle: 'italic',
-              fontSize: 'clamp(42px, 6vw, 72px)',
+              fontSize: 'clamp(34px, 5.5vw, 70px)',
               fontWeight: 800,
-              lineHeight: 1.05,
+              lineHeight: 1.06,
               letterSpacing: '-0.03em',
               color: headlineHovered ? '#00f0ff' : 'var(--text-hero)',
-              marginBottom: 26,
+              marginBottom: 24,
               cursor: 'pointer',
               transition: 'color 0.4s ease, text-shadow 0.4s ease',
               textShadow: headlineHovered
                 ? '0 0 40px rgba(0, 240, 255, 0.45)'
                 : 'none',
               userSelect: 'none',
+              wordBreak: 'break-word',
+              overflowWrap: 'break-word',
             }}
           >
             The zero-knowledge
@@ -106,7 +102,9 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
               color: 'var(--text-sub)',
               letterSpacing: '0.04em',
               maxWidth: 540,
+              width: '100%',
               marginBottom: 36,
+              wordBreak: 'break-word',
             }}
           >
             Built on Midnight&apos;s Compact zkSNARK state machine. Umbra guarantees
@@ -170,16 +168,17 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
         </div>
 
         {/* ── Right Column: Telemetry & Volume Spotlight Card (Image 1 UI format) ── */}
-        <div style={{ display: 'flex', justifyContent: 'center' }}>
+        <div style={{ display: 'flex', justifyContent: 'center', width: '100%', minWidth: 0 }}>
           <SpotlightCard
-            spotlightColor="rgba(0, 240, 255, 0.14)"
-            anchorColor="rgba(0, 240, 255, 0.3)"
+            spotlightColor="rgba(0, 240, 255, 0.16)"
+            anchorColor="rgba(0, 240, 255, 0.35)"
             style={{
               width: '100%',
               maxWidth: 480,
               borderRadius: 20,
-              padding: '24px',
-              boxShadow: '0 25px 60px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(0, 240, 255, 0.1)',
+              padding: 'clamp(16px, 4vw, 24px)',
+              boxSizing: 'border-box',
+              boxShadow: 'inset 0 1px 1px 0 rgba(255, 255, 255, 0.22), 0 24px 60px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(0, 240, 255, 0.15)',
             }}
           >
             {/* Header: Telemetry & Volume + Synced Pill */}
@@ -236,6 +235,7 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
                 flexDirection: 'column',
                 gap: 16,
                 marginBottom: 20,
+                width: '100%',
               }}
             >
               {[
@@ -266,12 +266,13 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'space-between',
+                    gap: 12,
                     fontFamily: 'var(--font-mono)',
                     fontSize: 12,
                   }}
                 >
-                  <span style={{ color: 'var(--text-sub)' }}>{row.label}</span>
-                  <span style={{ color: row.color || 'var(--text-hero)', fontWeight: 600 }}>
+                  <span style={{ color: 'var(--text-sub)', flexShrink: 0 }}>{row.label}</span>
+                  <span style={{ color: row.color || 'var(--text-hero)', fontWeight: 600, textAlign: 'right' }}>
                     {row.value}
                   </span>
                 </div>
@@ -290,8 +291,8 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
             {/* Code Snippet Box */}
             <div
               style={{
-                background: 'rgba(0, 0, 0, 0.45)',
-                border: '1px solid rgba(255, 255, 255, 0.06)',
+                background: 'rgba(0, 0, 0, 0.25)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
                 borderRadius: 10,
                 padding: '12px 14px',
                 fontFamily: 'var(--font-mono)',
@@ -299,9 +300,11 @@ export const LandingHero: React.FC<LandingHeroProps> = ({
                 color: '#a5f3fc',
                 overflowX: 'auto',
                 lineHeight: 1.6,
+                maxWidth: '100%',
+                boxSizing: 'border-box',
               }}
             >
-              <code>
+              <code style={{ whiteSpace: 'nowrap' }}>
                 circuit deposit(witness buyerSecret: Bytes&lt;32&gt;, val: Uint&lt;64&gt;) -&gt; Result&lt;(), ZkError&gt;
               </code>
             </div>
