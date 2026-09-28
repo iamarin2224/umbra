@@ -95,26 +95,26 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
 
   const baseCommands: CommandItem[] = [
     {
-      id: 'nav-matrix',
-      title: 'Command Matrix',
-      subtitle: 'View live escrow agreements, commitments & filters',
+      id: 'nav-home',
+      title: 'Home & Overview',
+      subtitle: 'Landing hero with telemetry metrics',
       category: 'Navigation',
       icon: <Layers size={15} color="#00f0ff" />,
       shortcut: '⌘ 1',
       action: () => {
-        onSelectTab('escrows');
+        onSelectTab('home');
         onClose();
       },
     },
     {
-      id: 'nav-telemetry',
-      title: 'Protocol Telemetry',
-      subtitle: 'Prover performance, volume benchmarks & metrics',
+      id: 'nav-app',
+      title: 'Live App & Enclaves',
+      subtitle: 'Active escrow agreements, state machines & commitments',
       category: 'Navigation',
-      icon: <Activity size={15} color="#34d399" />,
+      icon: <Layers size={15} color="#00f0ff" />,
       shortcut: '⌘ 2',
       action: () => {
-        onSelectTab('stats');
+        onSelectTab('app');
         onClose();
       },
     },
@@ -126,19 +126,19 @@ export const CommandPalette: React.FC<CommandPaletteProps> = ({
       icon: <Cpu size={15} color="#c084fc" />,
       shortcut: '⌘ 3',
       action: () => {
-        onSelectTab('explorer');
+        onSelectTab('circuits');
         onClose();
       },
     },
     {
-      id: 'nav-docs',
-      title: 'Architecture Docs',
+      id: 'nav-guide',
+      title: 'Architecture & Guide',
       subtitle: 'Learn about Midnight Halo2 SNARK verification & states',
       category: 'Navigation',
       icon: <BookOpen size={15} color="#fbbf24" />,
       shortcut: '⌘ 4',
       action: () => {
-        onSelectTab('about');
+        onSelectTab('guide');
         onClose();
       },
     },

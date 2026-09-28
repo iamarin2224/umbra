@@ -32,11 +32,11 @@ export const HeaderHUD: React.FC<HeaderHUDProps> = ({
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Navbar has strictly: HOME, APP, CIRCUITS displayed directly in the bar
+  // Navbar has strictly: APP, CIRCUITS, GUIDES directly in the bar
   const navItems: Array<{ id: NavTab; label: string }> = [
-    { id: 'home', label: 'HOME' },
     { id: 'app', label: 'APP' },
     { id: 'circuits', label: 'CIRCUITS' },
+    { id: 'guide', label: 'GUIDES' },
   ];
 
   return (
@@ -81,13 +81,14 @@ export const HeaderHUD: React.FC<HeaderHUDProps> = ({
           transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
       >
-        {/* Left: Full Name "Umbra" + SYS.ONLINE Badge */}
+        {/* Left: Full Name "Umbra" (acts as Home button) + SYS.ONLINE Badge */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <div
             onClick={() => {
               soundFx.playTick();
               onTabChange('home');
             }}
+            title="Umbra Home"
             style={{
               display: 'flex',
               alignItems: 'baseline',
@@ -95,6 +96,13 @@ export const HeaderHUD: React.FC<HeaderHUDProps> = ({
               cursor: 'pointer',
               userSelect: 'none',
               padding: '2px 4px',
+              transition: 'opacity 0.2s ease',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.opacity = '0.8';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.opacity = '1';
             }}
           >
             <span

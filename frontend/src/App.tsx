@@ -2,22 +2,22 @@ import React, { useState, useEffect } from 'react';
 import { CanvasFluidBackground } from './components/CanvasFluidBackground';
 import { FluidCursor } from './components/FluidCursor';
 import { HeaderHUD, NavTab } from './components/HeaderHUD';
+import { LandingHero } from './components/LandingHero';
 import { CommandPalette, MagicDraftPayload } from './components/CommandPalette';
-import { PageTransition } from './components/PageTransition';
-import { TelemetryBar } from './components/TelemetryBar';
 import { EscrowMatrix } from './components/EscrowMatrix';
 import { EscrowInspectorModal } from './components/EscrowInspectorModal';
 import { CreateEscrowModal } from './components/CreateEscrowModal';
 import { ActionModal } from './components/ActionModal';
 import { ZKExplorerView } from './components/ZKExplorerView';
-import { ProtocolMetricsView } from './components/ProtocolMetricsView';
 import { AboutUmbraView } from './components/AboutUmbraView';
 import { FooterHUD } from './components/FooterHUD';
+import { PageTransition } from './components/PageTransition';
 import { useEscrowService } from './hooks/useEscrowService';
 import { EscrowRecord, EscrowActionType } from './types/escrow';
+import { soundFx } from './lib/AudioEngine';
 
 export function App() {
-  const [activeTab, setActiveTab] = useState<NavTab>('escrows');
+  const [activeTab, setActiveTab] = useState<NavTab>('home');
   const [inspectorOpen, setInspectorOpen] = useState<boolean>(false);
   const [createModalOpen, setCreateModalOpen] = useState<boolean>(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState<boolean>(false);
@@ -35,7 +35,6 @@ export function App() {
     selectedEscrow,
     setSelectedEscrow,
     actionLoading,
-    refreshing,
     refresh,
     createEscrow,
     executeAction,
@@ -75,6 +74,11 @@ export function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
+  const handleNavigate = (tab: NavTab) => {
+    setActiveTab(tab);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const handleOpenActionModal = (escrow: EscrowRecord, action: EscrowActionType) => {
     setActionModalEscrow(escrow);
     setPendingActionType(action);
@@ -109,29 +113,24 @@ export function App() {
       {/* ── Floating Dynamic Island Notch Bar ── */}
       <HeaderHUD
         activeTab={activeTab}
-        onTabChange={(tab) => {
-          setActiveTab(tab);
-        }}
+        onTabChange={handleNavigate}
         isBackendOnline={isBackendOnline}
-        refreshing={refreshing}
-        onRefresh={refresh}
         onCreateClick={() => handleOpenCreateWithPrefill()}
-        onOpenCommandPalette={() => setCommandPaletteOpen(true)}
         theme={theme}
         onToggleTheme={toggleTheme}
       />
 
-      {/* ── Main Spatial Workspace ── */}
+      {/* ── Main Dedicated View Container ── */}
       <main
         style={{
           flex: 1,
-          padding: '100px 0 60px',
+          padding: '90px 0 60px',
           position: 'relative',
           zIndex: 10,
         }}
       >
         <div style={{ maxWidth: '1360px', width: '100%', margin: '0 auto', padding: '0 24px' }}>
-          {/* ── Error Banner ── */}
+          {/* Error Banner */}
           {error && (
             <div
               role="alert"
@@ -153,88 +152,109 @@ export function App() {
             </div>
           )}
 
-          {/* ── Hero Editorial Title & Subtitle ── */}
-          <div style={{ marginBottom: 28, textAlign: 'left' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-              <span
-                style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 11,
-                  color: 'var(--cyan)',
-                  background: 'rgba(0, 240, 255, 0.08)',
-                  border: '1px solid rgba(0, 240, 255, 0.25)',
-                  padding: '2px 8px',
-                  borderRadius: 9999,
-                  letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
-                }}
-              >
-                Midnight Shielded Enclave
-              </span>
-            </div>
-
-            <h1
-              style={{
-                fontFamily: 'var(--font-editorial)',
-                fontStyle: 'italic',
-                fontSize: 'clamp(28px, 4vw, 40px)',
-                fontWeight: 800,
-                color: 'var(--text-hero)',
-                letterSpacing: '-0.03em',
-                lineHeight: 1.15,
-                margin: '4px 0',
-              }}
-            >
-              Shielded Zero-Knowledge Escrow Protocol
-            </h1>
-
-            <p
-              style={{
-                fontSize: 13,
-                color: 'var(--text-sub)',
-                marginTop: 6,
-                maxWidth: 680,
-                lineHeight: 1.5,
-              }}
-            >
-              Autonomous, zero-leakage peer-to-peer settlement infrastructure powered by Halo2 zkSNARK circuits and Compact state machines.
-            </p>
-          </div>
-
-          {/* ── Bento Telemetry Bar with Odometers ── */}
-          <TelemetryBar stats={stats} isBackendOnline={isBackendOnline} />
-
-          {/* ── Liquid Warp SVG Displacement Route Page Transition ── */}
+          {/* ── Dedicated Page Transition Routing ── */}
           <PageTransition routeKey={activeTab}>
-            {/* VIEW 1: COMMAND MATRIX */}
-            {activeTab === 'escrows' && (
-              <EscrowMatrix
-                escrows={filteredEscrows}
-                filter={filter}
-                onFilterChange={setFilter}
-                onSelectEscrow={(item) => {
-                  setSelectedEscrow(item);
-                  setInspectorOpen(true);
-                }}
-                onAction={handleOpenActionModal}
-                isActionLoading={actionLoading}
-                onCreateClick={() => handleOpenCreateWithPrefill()}
+            {/* 1. HOME VIEW */}
+            {activeTab === 'home' && (
+              <LandingHero
+                onLaunchApp={() => handleNavigate('app')}
+                onReadArchitecture={() => handleNavigate('guide')}
+                isBackendOnline={isBackendOnline}
+                stats={stats}
               />
             )}
 
-            {/* VIEW 2: TELEMETRY */}
-            {activeTab === 'stats' && (
-              <ProtocolMetricsView stats={stats} isBackendOnline={isBackendOnline} />
+            {/* 2. APP VIEW (Live Enclave Workspace) */}
+            {activeTab === 'app' && (
+              <section style={{ paddingTop: '20px', marginBottom: '80px' }}>
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-end',
+                    justifyContent: 'space-between',
+                    marginBottom: 24,
+                    flexWrap: 'wrap',
+                    gap: 16,
+                  }}
+                >
+                  <div>
+                    <span
+                      style={{
+                        fontFamily: 'var(--font-mono)',
+                        fontSize: 10,
+                        letterSpacing: '0.15em',
+                        color: 'var(--cyan)',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      Live Enclaves
+                    </span>
+                    <h2
+                      style={{
+                        fontFamily: 'var(--font-editorial)',
+                        fontStyle: 'italic',
+                        fontSize: 32,
+                        fontWeight: 800,
+                        color: 'var(--text-hero)',
+                        marginTop: 4,
+                      }}
+                    >
+                      Active Escrow Agreements
+                    </h2>
+                  </div>
+
+                  <button
+                    onClick={() => {
+                      soundFx.playOpen();
+                      handleOpenCreateWithPrefill();
+                    }}
+                    style={{
+                      padding: '10px 20px',
+                      borderRadius: 9999,
+                      background: 'rgba(0, 240, 255, 0.1)',
+                      border: '1px solid rgba(0, 240, 255, 0.35)',
+                      color: 'var(--cyan)',
+                      fontFamily: 'var(--font-mono)',
+                      fontSize: 11,
+                      fontWeight: 700,
+                      letterSpacing: '0.08em',
+                      cursor: 'pointer',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: 6,
+                    }}
+                  >
+                    <span>+ DEPLOY NEW ESCROW</span>
+                  </button>
+                </div>
+
+                <EscrowMatrix
+                  escrows={filteredEscrows}
+                  filter={filter}
+                  onFilterChange={setFilter}
+                  onSelectEscrow={(item) => {
+                    setSelectedEscrow(item);
+                    setInspectorOpen(true);
+                  }}
+                  onAction={handleOpenActionModal}
+                  isActionLoading={actionLoading}
+                  onCreateClick={() => handleOpenCreateWithPrefill()}
+                />
+              </section>
             )}
 
-            {/* VIEW 3: CIRCUIT LAB */}
-            {activeTab === 'explorer' && (
-              <ZKExplorerView />
+            {/* 3. CIRCUITS VIEW */}
+            {activeTab === 'circuits' && (
+              <section style={{ paddingTop: '20px', marginBottom: '80px' }}>
+                <ZKExplorerView />
+              </section>
             )}
 
-            {/* VIEW 4: DOCS & ARCHITECTURE */}
-            {activeTab === 'about' && (
-              <AboutUmbraView />
+            {/* 4. GUIDE VIEW (Architecture Specification) */}
+            {activeTab === 'guide' && (
+              <section style={{ paddingTop: '20px', marginBottom: '80px' }}>
+                <AboutUmbraView />
+              </section>
             )}
           </PageTransition>
         </div>
@@ -281,15 +301,17 @@ export function App() {
         isOpen={commandPaletteOpen}
         onClose={() => setCommandPaletteOpen(false)}
         activeTab={activeTab}
-        onSelectTab={(tab) => setActiveTab(tab)}
+        onSelectTab={handleNavigate}
         onOpenCreateModal={(prefill) => handleOpenCreateWithPrefill(prefill)}
         onRefresh={refresh}
         theme={theme}
         onToggleTheme={toggleTheme}
       />
 
-      {/* ── Minimalist Precision Bottom HUD ── */}
-      <FooterHUD />
+      {/* ── Editorial Watermark Footer ── */}
+      <FooterHUD
+        onNavigateTab={handleNavigate}
+      />
     </div>
   );
 }
