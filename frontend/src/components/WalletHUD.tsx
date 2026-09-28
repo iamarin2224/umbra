@@ -44,19 +44,21 @@ export const WalletHUD: React.FC = () => {
           onClick={() => connect()}
           disabled={isConnecting}
           style={{
-            background: 'rgba(0, 240, 255, 0.08)',
-            border: '1px solid rgba(0, 240, 255, 0.3)',
-            color: 'var(--cyan)',
-            fontFamily: 'var(--font-body)',
-            fontSize: '12px',
-            fontWeight: 500,
-            padding: '7px 14px',
-            borderRadius: '8px',
+            background: 'rgba(255, 255, 255, 0.06)',
+            border: '1px solid rgba(255, 255, 255, 0.18)',
+            color: '#ffffff',
+            fontFamily: 'var(--font-mono)',
+            fontSize: '11px',
+            fontWeight: 600,
+            letterSpacing: '0.12em',
+            padding: '7px 20px',
+            borderRadius: 9999,
             cursor: isConnecting ? 'wait' : 'pointer',
-            transition: 'all 0.2s var(--ease-apple)',
+            transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
             display: 'flex',
             alignItems: 'center',
             gap: '6px',
+            textTransform: 'uppercase',
           }}
         >
           {isConnecting ? (
@@ -66,19 +68,16 @@ export const WalletHUD: React.FC = () => {
                   display: 'inline-block',
                   width: '10px',
                   height: '10px',
-                  border: '2px solid var(--cyan)',
+                  border: '2px solid #ffffff',
                   borderTopColor: 'transparent',
                   borderRadius: '50%',
                   animation: 'spin 1s linear infinite',
                 }}
               />
-              <span>Connecting...</span>
+              <span>CONNECTING...</span>
             </>
           ) : (
-            <>
-              <Wallet size={13} />
-              <span>Connect Wallet</span>
-            </>
+            <span>CONNECT</span>
           )}
         </button>
 
@@ -105,19 +104,20 @@ export const WalletHUD: React.FC = () => {
       <button
         onClick={() => setDropdownOpen(!dropdownOpen)}
         style={{
-          background: 'rgba(52, 211, 153, 0.08)',
-          border: '1px solid rgba(52, 211, 153, 0.25)',
-          color: '#e2e8f0',
+          background: 'rgba(255, 255, 255, 0.05)',
+          border: '1px solid rgba(16, 185, 129, 0.35)',
+          color: '#ffffff',
           fontFamily: 'var(--font-mono)',
-          fontSize: '12px',
-          fontWeight: 500,
-          padding: '6px 12px',
-          borderRadius: '8px',
+          fontSize: '11px',
+          fontWeight: 600,
+          letterSpacing: '0.08em',
+          padding: '6px 14px',
+          borderRadius: 9999,
           cursor: 'pointer',
           display: 'flex',
           alignItems: 'center',
           gap: '8px',
-          transition: 'all 0.2s var(--ease-apple)',
+          transition: 'all 0.2s cubic-bezier(0.16, 1, 0.3, 1)',
         }}
       >
         <span
