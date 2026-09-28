@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { EscrowState } from "./types";
+import type { EscrowState } from "./types.js";
 
 // ─── Contract Bindings & Metadata ───────────────────────────────────────────
 // Manages artifact loading, circuit definitions, and state transition validation.

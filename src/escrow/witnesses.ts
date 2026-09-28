@@ -1,4 +1,4 @@
-import type { EscrowWitnesses } from "./types";
+import type { EscrowWitnesses } from "./types.js";
 
 // ─── Umbra Escrow Witness Providers ─────────────────────────────────────────
 // Bridges local private state to the Midnight Compact ZK circuit witnesses.

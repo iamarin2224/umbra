@@ -1,7 +1,7 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 import { env } from "../env.js";
-import type { EscrowEvent, EscrowFilter, EscrowRecord } from "./types";
+import type { EscrowEvent, EscrowFilter, EscrowRecord } from "./types.js";
 
 // ─── Escrow Persistence Repository ──────────────────────────────────────────
 // The only production implementation persists to Supabase/Postgres.

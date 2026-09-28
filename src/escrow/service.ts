@@ -7,13 +7,13 @@ import type {
     EscrowEvent,
     EscrowRecord,
     EscrowState,
-} from "./types";
-import { EscrowState as State, ESCROW_STATE_LABELS } from "./types";
-import { generateSalt, generateSecret } from "./witnesses";
-import { isValidTransition, type CircuitName } from "./contract";
-import { verifyAmount, verifyCondition, computeEscrowHash } from "./verification";
-import { createMidnightChainGateway, type ChainGateway } from "./gateway";
-import { createSupabaseEscrowRepository, type EscrowRepository } from "./repository";
+} from "./types.js";
+import { EscrowState as State, ESCROW_STATE_LABELS } from "./types.js";
+import { generateSalt, generateSecret } from "./witnesses.js";
+import { isValidTransition, type CircuitName } from "./contract.js";
+import { verifyAmount, verifyCondition, computeEscrowHash } from "./verification.js";
+import { createMidnightChainGateway, type ChainGateway } from "./gateway.js";
+import { createSupabaseEscrowRepository, type EscrowRepository } from "./repository.js";
 
 // ─── Umbra Escrow Service ───────────────────────────────────────────────────
 // Real orchestration layer: validates domain rules, executes ZK circuits on

@@ -1,4 +1,4 @@
-import type { EscrowState } from "./types";
+import type { EscrowState } from "./types.js";
 
 // ─── Umbra Private State Schema & Storage ───────────────────────────────────
 // Manages sensitive client-side data (counterparty secrets, amounts, conditions, salts)

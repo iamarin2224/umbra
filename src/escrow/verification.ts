@@ -1,5 +1,5 @@
-import type { EscrowState, VerificationResult } from "./types";
-import { ESCROW_STATE_LABELS, EscrowState as State } from "./types";
+import type { EscrowState, VerificationResult } from "./types.js";
+import { ESCROW_STATE_LABELS, EscrowState as State } from "./types.js";
 
 // ─── Umbra Verification Utilities ───────────────────────────────────────────
 // Provides validation for state transitions, address commitments, amounts, conditions,

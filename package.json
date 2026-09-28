@@ -7,7 +7,7 @@
     "types": "dist/index.d.ts",
     "scripts": {
         "build": "tsc",
-        "start": "node dist/server.js",
+        "start": "node --env-file-if-exists=.env.local dist/server.js",
         "dev": "vitest",
         "test": "vitest run",
         "test:watch": "vitest",

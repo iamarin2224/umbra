@@ -1,4 +1,4 @@
-import type { OnChainEscrowState, EscrowTransaction } from "./types";
+import type { OnChainEscrowState, EscrowTransaction } from "./types.js";
 
 // ─── Umbra Indexer GraphQL Client ───────────────────────────────────────────
 // Provides querying capabilities against Midnight network indexers.

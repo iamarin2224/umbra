@@ -21,7 +21,7 @@ export {
     type EscrowTransaction,
     type VerificationResult,
     type SettlementProof,
-} from "./types";
+} from "./types.js";
 
 // ─── Witnesses ──────────────────────────────────────────────────────────────
 export {
@@ -29,7 +29,7 @@ export {
     createWitnessesFromRecord,
     generateSecret,
     generateSalt,
-} from "./witnesses";
+} from "./witnesses.js";
 
 // ─── Private State ──────────────────────────────────────────────────────────
 export {
@@ -46,7 +46,7 @@ export {
     clearMemoryState,
     createInitialPrivateState,
     updatePrivateState,
-} from "./private-state";
+} from "./private-state.js";
 
 // ─── Contract ───────────────────────────────────────────────────────────────
 export {
@@ -59,7 +59,7 @@ export {
     type CompiledEscrowContract,
     type ContractInfo,
     type CircuitName,
-} from "./contract";
+} from "./contract.js";
 
 // ─── Chain Gateway & Repository ─────────────────────────────────────────────
 export {
@@ -69,13 +69,13 @@ export {
     type ChainGatewayCallParams,
     type ChainGatewayCallResult,
     createMidnightChainGateway,
-} from "./gateway";
+} from "./gateway.js";
 
 export {
     type EscrowRepository,
     createSupabaseEscrowRepository,
     isSupabaseConfigured,
-} from "./repository";
+} from "./repository.js";
 
 // ─── Service ────────────────────────────────────────────────────────────────
 export {
@@ -92,7 +92,7 @@ export {
     listEscrows,
     listEvents,
     removeEscrow,
-} from "./service";
+} from "./service.js";
 
 // ─── Verification ───────────────────────────────────────────────────────────
 export {
@@ -102,7 +102,7 @@ export {
     verifyCondition,
     computeEscrowHash,
     validateEscrowRecord,
-} from "./verification";
+} from "./verification.js";
 
 // ─── Indexer ────────────────────────────────────────────────────────────────
 export {
@@ -111,4 +111,4 @@ export {
     fetchLatestBlock,
     contractExists,
     getEscrowSummary,
-} from "./indexer";
+} from "./indexer.js";
